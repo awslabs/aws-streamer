@@ -81,7 +81,7 @@ RUN pip3 install -r /aws-streamer/requirements.txt
 
 RUN ["/bin/bash", "/aws-streamer/build.sh", "-DBUILD_KVS=ON"]
 
-RUN ["/bin/ls", "-la", "/aws-streamer/examples/test_app/gstaws/gst_plugins/kvs"]
+RUN ["/bin/ls", "-la", "/aws-streamer/examples/test_app/awstreamer/gst_plugins/kvs"]
 
 WORKDIR /aws-streamer
 RUN chmod +x /aws-streamer/examples/serverless/run.sh

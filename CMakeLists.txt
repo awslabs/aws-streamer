@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(AWS_Stream_SDK)
-set(SRC_DIR gstaws)
+set(SRC_DIR awstreamer)
 
 option(BUILD_METADATA "Build custom GStreamer metadata" ON)
 option(BUILD_KVS "Build KVS GStreamer plug-in" OFF)
@@ -91,12 +91,12 @@ if (BUILD_TESTS)
     # Get list of subdirectories in examples folder
     SUBDIRLIST(SUBDIRS ${CMAKE_SOURCE_DIR}/examples)
 
-    # Remove and copy gstaws to each subdirectory
+    # Remove and copy awstreamer to each subdirectory
     FOREACH(subdir ${SUBDIRS})
         string(TOUPPER COPY_PACKAGE_TO_${subdir} TARGET_NAME)
         add_custom_target(${TARGET_NAME} ALL
-            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_SOURCE_DIR}/examples/${subdir}/gstaws
-            COMMAND ${CMAKE_COMMAND} -E copy_directory ${PYTHON_PACKAGE_DIR} ${CMAKE_SOURCE_DIR}/examples/${subdir}/gstaws
+            COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_SOURCE_DIR}/examples/${subdir}/awstreamer
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${PYTHON_PACKAGE_DIR} ${CMAKE_SOURCE_DIR}/examples/${subdir}/awstreamer
             DEPENDS COPY_GST_PLUGINS COPY_GST_METADATA COPY_UTILS COPY_GST_VIEWER COPY_GST_PIPELINE
         )
     ENDFOREACH()

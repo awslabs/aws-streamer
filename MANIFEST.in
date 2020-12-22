@@ -1,2 +1,2 @@
-include gstaws/gst_pipeline/config.json
-recursive-include gstaws *.py
+include awstreamer/gst_pipeline/config.json
+recursive-include awstreamer *.py

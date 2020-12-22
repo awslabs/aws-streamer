@@ -1,6 +1,6 @@
 
 import os
-import gstaws
+import awstreamer
 from pprint import pformat
 
 dir_path = os.path.abspath(os.path.dirname(__file__))
@@ -13,8 +13,8 @@ def my_callback(metadata):
 
 if __name__ == '__main__':
 
-    # Initialize gstaws client
-    client = gstaws.client()
+    # Initialize awstreamer client
+    client = awstreamer.client()
 
     # Start a new pipeline synchronously
     client.start({

@@ -17,9 +17,9 @@ from functools import wraps
 from os.path import isfile, join
 import glob
 import shutil
-import gstaws
-from gstaws.utils.aws import is_greengrass_enabled
-from gstaws.utils.video import get_video_files_in_time_range, merge_video_files, sec_to_timestamp, list_files, sort_files_by_creation_time
+import awstreamer
+from awstreamer.utils.aws import is_greengrass_enabled
+from awstreamer.utils.video import get_video_files_in_time_range, merge_video_files, sec_to_timestamp, list_files, sort_files_by_creation_time
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

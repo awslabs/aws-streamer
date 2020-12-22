@@ -2,6 +2,18 @@
 
 The AWS Streamer is a collection of video processing and streaming tools for AWS platform. It will enable users to stream from multiple camera sources, process the video stream and upload to the cloud and/or local storage. It can be used standalone, inside AWS Lambda functions, AWS ECS container or running on an AWS IoT Greengrass Core.
 
+<p align="center">
+  <a href="#key-features">Key Features</a> •
+  <a href="#build">Build</a> •
+  <a href="#usage">Usage</a> •
+  <a href="#notes">Notes</a> •
+  <a href="#debugging">Debugging</a> •
+  <a href="#security">Security</a> •
+  <a href="#license">License</a>
+</p>
+
+## Key Features
+
 List of features provided by this library:
 
  - Streams from multiple cameras in parallel locally and to the cloud
@@ -11,7 +23,9 @@ List of features provided by this library:
  - Run computer vision algorithm on the video streams
  - Preview live stream in the browser
 
-## Prerequisites
+## Build
+
+### Prerequisites
 
 - Python 3.7 or newer.
 
@@ -50,29 +64,38 @@ List of features provided by this library:
     sudo python3 -m easy_install install virtualenv
     ```
 
-## Install
+### Install
 
-With pip:
-``` bash
-pip install -v .
-```
+- With pip:
+    ``` bash
+    pip install git+https://github.com/awslabs/aws-streamer.git
+    ```
 
-To set extra CMake flags (see below table):
-``` bash
-pip install -v . --install-option "build_ext" --install-option "--cmake-args=-DBUILD_KVS=ON"
-```
+    or
 
-In place:
-``` bash
-virtualenv venv
-source venv/bin/activate
+    ``` bash
+    git clone https://github.com/awslabs/aws-streamer.git
+    cd aws-streamer
+    pip install -v .
+    ```
 
-pip install --upgrade wheel pip setuptools
-pip install pip==18.1
-pip install --upgrade --requirement requirements.txt
+    To set extra CMake flags (see below table):
+    ``` bash
+    pip install -v . --install-option "build_ext" --install-option "--cmake-args=-DBUILD_KVS=ON"
+    ```
 
-./build.sh [optional:CMAKE_FLAGS]
-```
+- In place:
+    ``` bash
+    virtualenv venv
+    source venv/bin/activate
+
+    pip install --upgrade wheel pip setuptools
+    pip install --upgrade --requirement requirements.txt
+
+    ./build.sh [optional:CMAKE_FLAGS]
+    ```
+
+### CMake Options
 
 | CMake flag          | Description                       | Default value |
 | ------------------- | --------------------------------- | ------------- |
@@ -84,19 +107,21 @@ pip install --upgrade --requirement requirements.txt
 | -BUILD_MXNET        | Build MXnet GStreamer plug-in     | OFF           |
 
 
-## Using JSON Configuration
+## Usage
+
+### Using JSON Configuration
 
 ```bash
 cd examples/test_app
 python3 app.py ../configs/testsrc_display.json
 ```
 
-## Using AWS Streamer
+### Using AWS Streamer
 
 ``` python
-import gstaws
+import awstreamer
 
-client = gstaws.client()
+client = awstreamer.client()
 ```
 
 Now you can stream from your camera to the KVS:
@@ -203,7 +228,7 @@ The command above will start recording 1-minute video segments to the given loca
 To retrieve videos by timestamp, you can use the following structure:
 
 ``` python
-from gstaws.utils.video import get_video_files_in_time_range, merge_video_files
+from awstreamer.utils.video import get_video_files_in_time_range, merge_video_files
 
 file_list = get_video_files_in_time_range(
     path = "/video/camera_0/",
@@ -219,22 +244,29 @@ merged = merge_video_files(
 
 To get video frame from anywhere in the pipeline:
 ``` python
-client.schedule({
-    "camera_0": {
-        "pipeline": "DVR",
-        "source": {
-            "name": "videotestsrc",
-            "is-live": True,
-            "do-timestamp": True,
-            "width": 640,
-            "height": 480,
-            "fps": 30
-        },
-        "sink": {
-            "name": "splitmuxsink",
-            "location": "/video/camera_0/output_%02d.mp4",
-            "segment_duration": "00:01:00",
-            "time_to_keep_days": 1
+def my_callback(buffer):
+    '''
+    This function will be called on every frame.
+    Buffer is a ndarray, do with it what you like!
+    '''
+    print("Buffer info: %s, %s, %s" % (str(type(buffer)), str(buffer.dtype), str(buffer.shape)))
+
+client.start({
+    "pipeline": {
+        "source": "videotestsrc",
+        "source_filter": "capsfilter",
+        "sink": "autovideosink"
+    },
+    "source": {
+        "is-live": True,
+        "do-timestamp": True
+    },
+    "source_filter": {
+        "caps": "video/x-raw,width=640,height=480,framerate=30/1"
+    },
+    "sink": {
+        "probes": {
+            "sink": my_callback
         }
     }
 })
@@ -245,9 +277,9 @@ client.schedule({
 If you use AWS plug-in (e.g. KVS) outside of AWS environment (i.e. not in AWS Greengrass IoT, AWS Lambda, etc.), remember to set the following env variables:
 
 ```bash
-    export AWS_ACCESS_KEY_ID=xxxxxxxxx
-    export AWS_SECRET_ACCESS_KEY=xxxxxxxxxx
-    export AWS_DEFAULT_REGION=ap-southeast-1 (for example)
+export AWS_ACCESS_KEY_ID=xxxxxxxxx
+export AWS_SECRET_ACCESS_KEY=xxxxxxxxxx
+export AWS_DEFAULT_REGION=us-east-1 (for example)
 ```
 
 ## Debugging

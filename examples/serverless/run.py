@@ -7,7 +7,7 @@
 
 import os
 import argparse
-import gstaws
+import awstreamer
 import boto3
 import time
 import json
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     print(args)
 
     # Streaming client
-    client = gstaws.client()
+    client = awstreamer.client()
 
     # Get the SQS client
     sqs = boto3.resource('sqs')

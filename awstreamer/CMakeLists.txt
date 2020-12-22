@@ -5,7 +5,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake;${CMAKE_MODULE_PATH}")
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 include(ExternalProject)
-project(gstaws)
+project(awstreamer)
 
 option(BUILD_METADATA "Build custom GStreamer metadata" ON)
 option(BUILD_KVS "Build KVS GStreamer plug-in" OFF)

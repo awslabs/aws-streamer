@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-    setup for gstaws package
+    setup for awstreamer package
 """
 import os
 import re
@@ -18,7 +18,7 @@ def read(file):
     return pathlib.Path(file).read_text('utf-8').strip()
 
 def get_version():
-    init = open(os.path.join(ROOT, 'gstaws', '__init__.py')).read()
+    init = open(os.path.join(ROOT, 'awstreamer', '__init__.py')).read()
     return VERSION_RE.search(init).group(1)
 
 class CMakeExtension(Extension):
@@ -79,7 +79,7 @@ install_requires = [
     r for r in read('requirements.txt').split('\n') if r]
 
 setup(
-    name='gstaws',
+    name='awstreamer',
     version=get_version(),
     description="AWS Streamer package",
     long_description='\n\n'.join((read('README.md'))),
@@ -91,7 +91,7 @@ setup(
     zip_safe=True,
     install_requires=install_requires,
     license="Apache Software License 2.0",
-    ext_modules=[CMakeExtension('gstaws')],
+    ext_modules=[CMakeExtension('awstreamer')],
     cmdclass={
         'build_ext': build_ext,
     }

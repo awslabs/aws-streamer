@@ -22,13 +22,13 @@ cd ${dir_path}
     AWS_GST_SDK=${dir_path}../aws-gst-sdk
     $AWS_GST_SDK/build.sh -DBUILD_KVS=ON
 
-    rm -rf ../src/gstreamer_pipeline/gstaws
-    rm -rf ../src/data_uploader/gstaws
-    rm -rf ../src/viewer/gstaws
+    rm -rf ../src/gstreamer_pipeline/awstreamer
+    rm -rf ../src/data_uploader/awstreamer
+    rm -rf ../src/viewer/awstreamer
 
-    cp -r $AWS_GST_SDK/build/gstaws_py ../src/gstreamer_pipeline/gstaws
-    cp -r $AWS_GST_SDK/build/gstaws_py ../src/data_uploader/gstaws
-    cp -r $AWS_GST_SDK/build/gstaws_py ../src/viewer/gstaws
+    cp -r $AWS_GST_SDK/build/awstreamer_py ../src/gstreamer_pipeline/awstreamer
+    cp -r $AWS_GST_SDK/build/awstreamer_py ../src/data_uploader/awstreamer
+    cp -r $AWS_GST_SDK/build/awstreamer_py ../src/viewer/awstreamer
 
     # --------------------------------------
     # Configs for viewer lambda

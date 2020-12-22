@@ -9,7 +9,7 @@ import sys
 import json
 import logging
 from pprint import pformat
-import gstaws
+import awstreamer
 import greengrasssdk
 
 # Create a global logger
@@ -17,7 +17,7 @@ logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Initialize AWS clients
-gst_client = gstaws.client()
+gst_client = awstreamer.client()
 gg_client = greengrasssdk.client("iot-data")
 
 def lambda_handler(event, context):

@@ -7,7 +7,7 @@
 
 import os
 import argparse
-import gstaws
+import awstreamer
 
 dir_path = os.path.abspath(os.path.dirname(__file__))
 cwd = os.getcwd()
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     print(config_file)
 
     # Start the pipeline
-    client = gstaws.client()
+    client = awstreamer.client()
     client.schedule(config_file, wait_for_finish=True)
 
     print("All done.")

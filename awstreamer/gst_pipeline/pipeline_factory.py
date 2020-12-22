@@ -27,7 +27,7 @@ class PipelineFactory():
 
         # If pipeline starts with dot (.), add relative path to it:
         if pipeline_path.startswith("."):
-            # Root dir of the gstaws python package is assumed to be: ../../
+            # Root dir of the awstreamer python package is assumed to be: ../../
             file_path = os.path.abspath(os.path.dirname(__file__))
             root_dir = os.path.abspath(os.path.dirname(os.path.dirname(file_path)))
 

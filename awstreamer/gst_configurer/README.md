@@ -21,9 +21,9 @@ FLASK_APP=stream_client.py flask run --no-reload --host=0.0.0.0
 
 or with SDK:
 ```python
-import gstaws
+import awstreamer
 
-client = gstaws.client("viewer")
+client = awstreamer.client("viewer")
 ```
 
 Go to [http://localhost:5000](http://localhost:5000) and click on it to play.

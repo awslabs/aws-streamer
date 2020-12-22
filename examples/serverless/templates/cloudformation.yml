@@ -53,7 +53,7 @@ Resources:
       InstanceTenancy: default
       Tags:
         - Key: "Project"
-          Value: gstaws
+          Value: awstreamer
 
   VideoStreamingVPCFlowLog:
     Type: AWS::EC2::FlowLog
@@ -71,7 +71,7 @@ Resources:
     Properties:
       Tags:
         - Key: "Project"
-          Value: gstaws
+          Value: awstreamer
 
   VideoStreamingInternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -92,7 +92,7 @@ Resources:
         - Key: "Name"
           Value: !Sub ${ServiceName} Subnet (AZ1)
         - Key: "Project"
-          Value: gstaws
+          Value: awstreamer
 
   VideoStreamingSubnet2:
     Type: AWS::EC2::Subnet
@@ -106,7 +106,7 @@ Resources:
         - Key: "Name"
           Value: !Sub ${ServiceName} Subnet (AZ2)
         - Key: "Project"
-          Value: gstaws
+          Value: awstreamer
 
   VideoStreamingRouteTable:
     Type: AWS::EC2::RouteTable
@@ -117,7 +117,7 @@ Resources:
         - Key: "Name"
           Value: !Sub ${ServiceName} Routes
         - Key: "Project"
-          Value: gstaws
+          Value: awstreamer
 
   VideoStreamingDefaultRoute:
     Type: AWS::EC2::Route
@@ -200,7 +200,7 @@ Resources:
           Description: "Management API Usage Plan"
           Tags:
             - Key: "Project"
-              Value: gstaws
+              Value: awstreamer
       Tags:
         Project: Smart Audit
         Team: Env. Mgmt. Services
@@ -292,7 +292,7 @@ Resources:
               Resource: "arn:aws:sqs:*:*:*"
       Tags:
         - Key: "Project"
-          Value: gstaws
+          Value: awstreamer
 
   VideoStreamingLambdaFunction:
     Type: AWS::Serverless::Function
@@ -332,7 +332,7 @@ Resources:
             LogGroupName: !Ref VideoStreamingCloudwatchLogsGroup
             FilterPattern: ""
       Tags:
-        Project: gstaws
+        Project: awstreamer
 
   # ECS
 
@@ -366,7 +366,7 @@ Resources:
               awslogs-stream-prefix: !Join ['-', [!Ref ServiceName, 'container']]
       Tags:
         - Key: "Project"
-          Value: gstaws
+          Value: awstreamer
 
   VideoStreamingExecutionRole:
     Type: AWS::IAM::Role

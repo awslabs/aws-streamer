@@ -95,7 +95,6 @@ class StreamClient():
                     "/usr/lib/x86_64-linux-gnu/libgstreamer-1.0.so.0"
                 ]
                 for path in lib_gst_paths:
-                    logger.info("Trying: %s..." % path)
                     if os.path.exists(path):
                         lib_gst_path = path
                         break
@@ -110,7 +109,7 @@ class StreamClient():
         '''
         Merge new config with existing one
         '''
-        self.config.update(config)# = StreamConfig.DeepUpdate(self.config, config)
+        self.config.update(config)
 
     def get_config(self, config_or_filename):
         '''

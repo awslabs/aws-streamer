@@ -5,7 +5,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from gstaws.utils.video import get_video_files_in_time_range, merge_video_files
+from awstreamer.utils.video import get_video_files_in_time_range, merge_video_files
 
 if __name__ == '__main__':
 

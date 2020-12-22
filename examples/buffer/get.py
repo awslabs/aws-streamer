@@ -16,7 +16,7 @@ Probe can be attached to any pad of any plugin. Syntax:
 
 '''
 
-import gstaws
+import awstreamer
 
 def my_callback(buffer):
     '''
@@ -28,8 +28,8 @@ def my_callback(buffer):
 
 if __name__ == '__main__':
 
-    # Initialize gstaws client
-    client = gstaws.client()
+    # Initialize awstreamer client
+    client = awstreamer.client()
 
     # Start a new pipeline synchronously
     client.start({
