@@ -8,7 +8,7 @@ autopep8>=1.4.4
 flake8>=3.7.9
 pebble==4.5.3
 flask>=0.12.3
-requests>=2.18.4
+requests>=2.20.0
 dataclasses==0.6
 urllib3==1.25.10
 boto3==1.16.41
