@@ -12,7 +12,6 @@ option(BUILD_KVS "Build KVS GStreamer plug-in" OFF)
 option(BUILD_KVS_WEBRTC "Build KVS WebRTC plug-in" OFF)
 option(BUILD_S3 "Build S3 GStreamer plug-in" OFF)
 option(BUILD_CVML "Build CVML filter" OFF)
-option(BUILD_GST_PYTHON "Build GStreamer Python bindings" OFF)
 option(BUILD_NEO_DLR "Build SageMaker NEO runtime" OFF)
 option(BUILD_MXNET "Build MXnet GStreamer plug-in" OFF)
 
@@ -54,12 +53,6 @@ if (BUILD_CVML)
 else ()
   message("-- BUILD_CVML \t\t\t= OFF")
 endif (BUILD_CVML)
-
-if (BUILD_GST_PYTHON)
-  message("-- BUILD_GST_PYTHON \t\t= ON")
-else ()
-  message("-- BUILD_GST_PYTHON \t\t= OFF")
-endif (BUILD_GST_PYTHON)
 
 if (BUILD_NEO_DLR)
   message("-- BUILD_NEO_DLR \t\t= ON")
@@ -138,11 +131,6 @@ endif (BUILD_KVS_WEBRTC)
 if (BUILD_S3)
   message(FATAL_ERROR "S3 sink plug-in has not been implemented yet.")
 endif (BUILD_S3)
-
-if (BUILD_GST_PYTHON)
-  add_custom_target(GSTPYTHON ALL ${CMAKE_CURRENT_SOURCE_DIR}/gst_python/get_gst_python.sh ${CMAKE_BINARY_DIR}
-                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-endif (BUILD_GST_PYTHON)
 
 if (BUILD_NEO_DLR)
   add_custom_target(NEODLR ALL ${CMAKE_CURRENT_SOURCE_DIR}/gst_plugins/dlr/get_dlr.sh ${CMAKE_BINARY_DIR}
