@@ -75,14 +75,14 @@ RUN apt -y autoremove
 
 RUN pip3 install wheel pip setuptools
 
-COPY . /aws-stream-sdk
+COPY . /aws-streamer
 
-RUN pip3 install -r /aws-stream-sdk/requirements.txt
+RUN pip3 install -r /aws-streamer/requirements.txt
 
-RUN ["/bin/bash", "/aws-stream-sdk/build.sh", "-DBUILD_KVS=ON"]
+RUN ["/bin/bash", "/aws-streamer/build.sh", "-DBUILD_KVS=ON"]
 
-RUN ["/bin/ls", "-la", "/aws-stream-sdk/examples/test_app/gstaws/gst_plugins/kvs"]
+RUN ["/bin/ls", "-la", "/aws-streamer/examples/test_app/gstaws/gst_plugins/kvs"]
 
-WORKDIR /aws-stream-sdk
-RUN chmod +x /aws-stream-sdk/examples/serverless/run.sh
-ENTRYPOINT ["/aws-stream-sdk/examples/serverless/run.sh"]
+WORKDIR /aws-streamer
+RUN chmod +x /aws-streamer/examples/serverless/run.sh
+ENTRYPOINT ["/aws-streamer/examples/serverless/run.sh"]

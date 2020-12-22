@@ -86,13 +86,25 @@ class StreamClient():
         # Set LIB_GSTREAMER_PATH
         if 'LIB_GSTREAMER_PATH' not in os.environ:
             logger.info("Gstreamer version: {}.{}.{}.{}".format(*Gst.version()))
+            lib_gst_path = None
             if sys.platform == "darwin":
                 lib_gst_path = "/usr/local/Cellar/gstreamer/{}.{}.{}/lib/libgstreamer-1.0.dylib".format(*Gst.version())
             else:
-                lib_gst_path = "/usr/lib/aarch64-linux-gnu/libgstreamer-1.0.so.0"
+                lib_gst_paths = [
+                    "/usr/lib/aarch64-linux-gnu/libgstreamer-1.0.so.0",
+                    "/usr/lib/x86_64-linux-gnu/libgstreamer-1.0.so.0"
+                ]
+                for path in lib_gst_paths:
+                    logger.info("Trying: %s..." % path)
+                    if os.path.exists(path):
+                        lib_gst_path = path
+                        break
 
-            logger.info("LIB_GSTREAMER_PATH: %s" % lib_gst_path)
-            os.environ['LIB_GSTREAMER_PATH'] = lib_gst_path
+            if lib_gst_path is None:
+                logger.warning("libgstreamer-1.0 not found! Please export LIB_GSTREAMER_PATH env var manually.")
+            else:
+                logger.info("LIB_GSTREAMER_PATH: %s" % lib_gst_path)
+                os.environ['LIB_GSTREAMER_PATH'] = lib_gst_path
 
     def update(self, config):
         '''

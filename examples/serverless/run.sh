@@ -9,4 +9,4 @@ X_SERVER_NUM=1
 
 echo ${QUEUE_NAME}
 
-python3 /aws-stream-sdk/examples/serverless/run.py ${QUEUE_NAME}
+python3 /aws-streamer/examples/serverless/run.py ${QUEUE_NAME}

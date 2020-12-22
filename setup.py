@@ -85,7 +85,7 @@ setup(
     long_description='\n\n'.join((read('README.md'))),
     author="Bartek Pawlik",
     author_email='pawlikb@amazon.com',
-    url='https://code.amazon.com/packages/Aws-stream-sdk',
+    url='https://github.com/awslabs/aws-streamer',
     packages=find_packages(),
     include_package_data=True,
     zip_safe=True,

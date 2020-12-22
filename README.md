@@ -13,7 +13,9 @@ List of features provided by this library:
 
 ## Prerequisites
 
-- If you are on Jetson platform (which by default has Python 3.6 installed), then do the following:
+- Python 3.7 or newer.
+
+    Tip: If your system has by default installed Python 3.6, then do the following:
     ```
     sudo ln -s /usr/bin/python3.6 /usr/bin/python3.7
     ```
@@ -21,20 +23,31 @@ List of features provided by this library:
 
 - Install GStreamer dependencies:
     ```
-    sudo apt install python-gi python3-gi \
+    sudo apt-get update
+    sudo apt-get install \
+        python3-dev \
+        python3-gi \
+        libgirepository1.0-dev \
         gstreamer1.0-tools \
         gir1.2-gstreamer-1.0 \
         gir1.2-gst-plugins-base-1.0 \
+        libgstreamer1.0-dev \
+        gstreamer1.0-plugins-base \
         gstreamer1.0-plugins-good \
-        gstreamer1.0-plugins-ugly \
-        gstreamer1.0-plugins-bad \
-        gstreamer1.0-libav \
-        python3-gst-1.0
+        pkg-config \
+        build-essential \
+        libcairo2-dev \
+        libpango1.0-dev \
+        libjpeg-dev \
+        libgif-dev \
+        librsvg2-dev \
+        cmake
     ```
 
-    On mac:
+- Install Python dependencies
     ```
-    brew install pygobject3 gstreamer
+    sudo python3 -m easy_install install pip
+    sudo python3 -m easy_install install virtualenv
     ```
 
 ## Install
@@ -51,10 +64,11 @@ pip install -v . --install-option "build_ext" --install-option "--cmake-args=-DB
 
 In place:
 ``` bash
-python3 -m venv venv
+virtualenv venv
 source venv/bin/activate
 
 pip install --upgrade wheel pip setuptools
+pip install pip==18.1
 pip install --upgrade --requirement requirements.txt
 
 ./build.sh [optional:CMAKE_FLAGS]
@@ -73,7 +87,7 @@ pip install --upgrade --requirement requirements.txt
 ## Using JSON Configuration
 
 ```bash
-cd examples/test-app
+cd examples/test_app
 python3 app.py ../configs/testsrc_display.json
 ```
 
