@@ -95,6 +95,7 @@ List of features provided by this library:
     ./build.sh [optional:CMAKE_FLAGS]
     ```
 
+
 ### CMake Options
 
 | CMake flag          | Description                       | Default value |
@@ -122,28 +123,9 @@ import awstreamer
 client = awstreamer.client()
 ```
 
-Now you can stream from your camera to the KVS:
-``` python
-client.start({
-    "source": {
-        "name": "videotestsrc",
-        "is-live": True,
-        "do-timestamp": True,
-        "width": 640,
-        "height": 480,
-        "fps": 30
-    },
-    "sink": {
-        "name": "kvssink",
-        "stream-name": "TestStream"
-    }
-})
-```
-
-You can also run multiple pipelines in parallel asynchronously (i.e. without waiting for the pipeline to finish):
-``` python
-client.schedule({
-    "pipeline_0": {
+- To stream from your camera to the KVS:
+    ``` python
+    client.start({
         "source": {
             "name": "videotestsrc",
             "is-live": True,
@@ -154,121 +136,145 @@ client.schedule({
         },
         "sink": {
             "name": "kvssink",
-            "stream-name": "TestStream0"
+            "stream-name": "TestStream"
         }
-    },
-    "pipeline_1": {
+    })
+    ```
+
+- To run multiple pipelines in parallel asynchronously (i.e. without waiting for the pipeline to finish):
+    ``` python
+    client.schedule({
+        "pipeline_0": {
+            "source": {
+                "name": "videotestsrc",
+                "is-live": True,
+                "do-timestamp": True,
+                "width": 640,
+                "height": 480,
+                "fps": 30
+            },
+            "sink": {
+                "name": "kvssink",
+                "stream-name": "TestStream0"
+            }
+        },
+        "pipeline_1": {
+            "source": {
+                "name": "videotestsrc",
+                "is-live": True,
+                "do-timestamp": True,
+                "width": 1280,
+                "height": 720,
+                "fps": 30
+            },
+            "sink": {
+                "name": "kvssink",
+                "stream-name": "TestStream1"
+            }
+        }
+    })
+    ```
+
+- To perform ML inference on the video stream:
+    ``` python
+    def my_callback(metadata):
+        print("Inference results: " + str(metadata))
+
+    client.start({
+        "pipeline": "DeepStream",
         "source": {
-            "name": "videotestsrc",
-            "is-live": True,
-            "do-timestamp": True,
+            "name": "filesrc",
+            "location": "/path/to/video.mp4",
+            "do-timestamp": False
+        },
+        "nvstreammux": {
             "width": 1280,
             "height": 720,
-            "fps": 30
+            "batch-size": 1
         },
-        "sink": {
-            "name": "kvssink",
-            "stream-name": "TestStream1"
+        "nvinfer": {
+            "enabled": True,
+            "config-file-path": "/path/to/nvinfer_config.txt"
+        },
+        "callback": my_callback
+    })
+    ```
+
+- To start recording of video segments to disk:
+    ``` python
+    client.schedule({
+        "camera_0": {
+            "pipeline": "DVR",
+            "source": {
+                "name": "videotestsrc",
+                "is-live": True,
+                "do-timestamp": True,
+                "width": 640,
+                "height": 480,
+                "fps": 30
+            },
+            "sink": {
+                "name": "splitmuxsink",
+                "location": "/video/camera_0/output_%02d.mp4",
+                "segment_duration": "00:01:00",
+                "time_to_keep_days": 1
+            }
         }
-    }
-})
-```
+    })
+    ```
+    The command above will start recording 1-minute video segments to the given location.
 
-To perform ML inference on the video stream:
-``` python
-def my_callback(metadata):
-    print("Inference results: " + str(metadata))
+- To get list of files within given timestamp:
+    ``` python
+    from awstreamer.utils.video import get_video_files_in_time_range
 
-client.start({
-    "pipeline": "DeepStream",
-    "source": {
-        "name": "filesrc",
-        "location": "/path/to/video.mp4",
-        "do-timestamp": False
-    },
-    "nvstreammux": {
-        "width": 1280,
-        "height": 720,
-        "batch-size": 1
-    },
-    "nvinfer": {
-        "enabled": True,
-        "config-file-path": "/path/to/nvinfer_config.txt"
-    },
-    "callback": my_callback
-})
-```
+    file_list = get_video_files_in_time_range(
+        path = "/video/camera_0/",
+        timestamp_from = "2020-08-05 13:03:47",
+        timestamp_to = "2020-08-05 13:05:40",
+    )
+    ```
 
-To start recording of video segments to disk:
-``` python
-client.schedule({
-    "camera_0": {
-        "pipeline": "DVR",
+- To merge video files into a single one:
+    ``` python
+    from awstreamer.utils.video import merge_video_files
+
+    merged = merge_video_files(
+        files = file_list,
+        destination_file = "merged.mkv"
+    )
+    ```
+
+- To get video frame from any point in the pipeline:
+    ``` python
+    def my_callback(buffer):
+        '''
+        This function will be called on every frame.
+        Buffer is a ndarray, do with it what you like!
+        '''
+        print("Buffer info: %s, %s, %s" % (str(type(buffer)), str(buffer.dtype), str(buffer.shape)))
+
+    client.start({
+        "pipeline": {
+            "source": "videotestsrc",
+            "source_filter": "capsfilter",
+            "sink": "autovideosink"
+        },
         "source": {
-            "name": "videotestsrc",
             "is-live": True,
-            "do-timestamp": True,
-            "width": 640,
-            "height": 480,
-            "fps": 30
+            "do-timestamp": True
         },
-        "sink": {
-            "name": "splitmuxsink",
-            "location": "/video/camera_0/output_%02d.mp4",
-            "segment_duration": "00:01:00",
-            "time_to_keep_days": 1
+        "source_filter": {
+            "caps": "video/x-raw,width=640,height=480,framerate=30/1"
+        },
+        "source_filter": {
+            "probes": {
+                "src": my_callback
+            }
         }
-    }
-})
-```
-The command above will start recording 1-minute video segments to the given location.
-
-To retrieve videos by timestamp, you can use the following structure:
-
-``` python
-from awstreamer.utils.video import get_video_files_in_time_range, merge_video_files
-
-file_list = get_video_files_in_time_range(
-    path = "/video/camera_0/",
-    timestamp_from = "2020-08-05 13:03:47",
-    timestamp_to = "2020-08-05 13:05:40",
-)
-
-merged = merge_video_files(
-    files = file_list,
-    destination_file = "merged.mkv"
-)
-```
-
-To get video frame from anywhere in the pipeline:
-``` python
-def my_callback(buffer):
-    '''
-    This function will be called on every frame.
-    Buffer is a ndarray, do with it what you like!
-    '''
-    print("Buffer info: %s, %s, %s" % (str(type(buffer)), str(buffer.dtype), str(buffer.shape)))
-
-client.start({
-    "pipeline": {
-        "source": "videotestsrc",
-        "source_filter": "capsfilter",
-        "sink": "autovideosink"
-    },
-    "source": {
-        "is-live": True,
-        "do-timestamp": True
-    },
-    "source_filter": {
-        "caps": "video/x-raw,width=640,height=480,framerate=30/1"
-    },
-    "sink": {
-        "probes": {
-            "sink": my_callback
-        }
-    }
-})
-```
+    })
+    ```
+    Above code will attach the probe to the source (outbound) pad of the source_filter plug-in.
 
 ## Notes
 
