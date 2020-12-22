@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: 'AWS::Serverless-2016-10-31'
-Description: CloudFormation template for Smart Audit Video Streaming.
+Description: CloudFormation template for Serveless Demo of AWS Streamer
 Parameters:
   ECRDockerImageArn:
     Type: String
-    Default: 707132582539.dkr.ecr.us-west-2.amazonaws.com/kvs-streaming-app:latest
+    Default: <account-id>.dkr.ecr.us-west-2.amazonaws.com/aws-streamer:latest
   ServiceName:
     Type: String
     Default: video-streaming
@@ -168,7 +168,7 @@ Resources:
     Properties:
       RestApiId:
         Ref: VideoStreamingGatewayApi
-      Description: Smart Audit Deployment
+      Description: AWS Streamer Deployment
     DependsOn:
       - VideoStreamingGatewayApiAccountConfig
 
@@ -202,7 +202,7 @@ Resources:
             - Key: "Project"
               Value: awstreamer
       Tags:
-        Project: Smart Audit
+        Project: AWS Streamer
         Team: Env. Mgmt. Services
 
   VideoStreamingGatewayApiLoggingRole:
