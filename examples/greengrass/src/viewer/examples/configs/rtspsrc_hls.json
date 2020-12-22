@@ -1,0 +1,20 @@
+{
+    "rtsp_hls": {
+        "enabled": true,
+        "pipeline": "VIDEO",
+        "source": {
+            "name": "rtspsrc",
+            "location": "rtsp://192.168.1.64:554",
+            "user-id": "admin",
+            "user-pw": "hikvisioncamera!",
+            "short-header": true
+        },
+        "sink": {
+            "name": "hlssink",
+            "max-files": 5,
+            "playlist-location": "/video/playlist_rtsp.m3u8",
+            "location": "/video/segment_rtsp_%05d.ts"
+        },
+        "debug": true
+    }
+}

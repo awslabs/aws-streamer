@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+# Transform: AWS::Serverless-2016-10-31
+Description: >
+  API Gateway with Lambda to talk to Greengrass Group
+
+Parameters:
+  CoreName:
+    Type: "String"
+    Default: DVR
+  LambdaFunctionName:
+    Type: "String"
+    AllowedPattern: "^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$"
+    Default: iot-publisher
+  ApiGatewayStageName:
+    Type: "String"
+    Default: Test
+
+Resources:
+  ApiGateway:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Name: !Join ["-", [!Ref CoreName, "iot-api"] ]
+      Description: "API to talk to lambda"
+
+  ApiGatewayModel:
+    Type: AWS::ApiGateway::Model
+    Properties:
+      ContentType: 'application/json'
+      RestApiId: !Ref ApiGateway
+      Schema: {}
+
+  ApiGatewayRootMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      AuthorizationType: "NONE"
+      HttpMethod: "POST"
+      Integration:
+        IntegrationHttpMethod: "POST"
+        Type: AWS
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !GetAtt LambdaFunction.Arn
+        IntegrationResponses:
+          - ResponseTemplates:
+              application/json: "Empty"
+            StatusCode: 200
+      MethodResponses:
+        - ResponseModels:
+            application/json: "Empty"
+          StatusCode: 200
+      MethodResponses:
+        - StatusCode: "200"
+          ResponseModels:
+            application/json: "Empty"
+      ResourceId: !GetAtt ApiGateway.RootResourceId
+      RestApiId: !Ref ApiGateway
+
+  ApiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - "ApiGatewayRootMethod"
+    Properties:
+      RestApiId: !Ref ApiGateway
+      StageName: !Ref ApiGatewayStageName
+
+  LambdaFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+
+          client = boto3.client('iot-data')
+
+          def handler(event, context):
+              print(event)
+              topic = event["topic"]
+              message = json.dumps(event["message"])
+              response = client.publish(
+                  topic=topic,
+                  qos=0,
+                  payload=message.encode("utf-8")
+              )
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps(response)
+              }
+
+      Description: "Function to send messages to MQTT topic"
+      FunctionName: !Ref "LambdaFunctionName"
+      Handler: "index.handler"
+      MemorySize: 128
+      Role: !GetAtt "LambdaIAMRole.Arn"
+      Runtime: "python3.7"
+      Timeout: 10
+
+  LambdaApiGatewayInvoke:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt "LambdaFunction.Arn"
+      Principal: "apigateway.amazonaws.com"
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiGateway}/*/POST/"
+
+  LambdaIAMRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "sts:AssumeRole"
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "lambda.amazonaws.com"
+      Policies:
+        - PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Effect: "Allow"
+                Resource:
+                  - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaFunctionName}:*"
+              - Effect: Allow
+                Action:
+                  - iot:Publish
+                  - iot:DescribeEndpoint
+                Resource: '*'
+          PolicyName: "lambda"
+
+  LambdaLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${LambdaFunctionName}"
+      RetentionInDays: 90
+
+Outputs:
+  ApiGatewayInvokeURL:
+    Value: !Sub "https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayStageName}"
+    Description: Gateway API invoke URL
+    Export:
+      Name: !Sub ${AWS::StackName}:ApiGatewayInvokeURL

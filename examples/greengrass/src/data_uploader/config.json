@@ -1,0 +1,12 @@
+{
+    "config": {
+        "dir": "/video",
+        "greengrass": {
+            "enabled": true,
+            "topic": null
+        },
+        "s3": {
+            "enabled": true
+        }
+    }
+}

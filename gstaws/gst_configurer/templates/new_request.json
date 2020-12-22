@@ -1,0 +1,11 @@
+{
+    "request": {
+        "gateway_id": "",
+        "camera_id": "",
+        "prefix": "",
+        "timestamp_from": "YYYY-MM-DD HH:mm:ss",
+        "timestamp_to": "YYYY-MM-DD HH:mm:ss",
+        "s3_bucket": "",
+        "s3_folder": ""
+    }
+}

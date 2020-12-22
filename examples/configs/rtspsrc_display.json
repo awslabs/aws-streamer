@@ -1,0 +1,21 @@
+{
+    "rtsp_display": {
+        "enabled": true,
+        "pipeline": {
+            "source": "rtspsrc",
+            "depay": "rtph264depay",
+            "parse": "h264parse",
+            "decoder": "omxh264dec",
+            "convert": "videoconvert",
+            "sink": "autovideosink"
+        },
+        "source": {
+            "location": "rtsp://192.168.1.64:554",
+            "user-id": "admin",
+            "user-pw": "hikvisioncamera!",
+            "short-header": true,
+            "linkable": false
+        },
+        "debug": true
+    }
+}

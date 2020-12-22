@@ -1,0 +1,21 @@
+{
+    "test_display": {
+        "enabled": true,
+        "pipeline": {
+            "source": "filesrc",
+            "decoder": "decodebin",
+            "queue": "queue",
+            "videoconvert": "videoconvert",
+            "sink": "autovideosink"
+        },
+        "source": {
+            "name": "filesrc",
+            "location": "/opt/nvidia/deepstream/deepstream/samples/streams/sample_720p.mp4",
+            "do-timestamp": false
+        },
+        "decoder": {
+            "linkable": false
+        },
+        "debug": true
+    }
+}

@@ -1,0 +1,52 @@
+{
+    "test_python_display": {
+        "enabled": false,
+        "pipeline": {
+            "source": "videotestsrc",
+            "source_filter": "capsfilter",
+            "gaussian_blur": "gaussian_blur",
+            "videoconvert": "videoconvert",
+            "convert_filter": "capsfilter",
+            "sink": "autovideosink"
+        },
+        "source": {
+            "is-live": true,
+            "do-timestamp": true
+        },
+        "source_filter": {
+            "caps": "video/x-raw,format=RGBA,width=640,height=480,framerate=30/1"
+        },
+        "gaussian_blur": {
+            "kernel": 9,
+            "sigmaX": 5.0,
+            "sigmaY": 5.0
+        },
+        "convert_filter": {
+            "caps": "video/x-raw,format=I420"
+        },
+        "debug": true
+    },
+    "test_python_metadata": {
+        "enabled": true,
+        "pipeline": {
+            "source": "videotestsrc",
+            "source_filter": "capsfilter",
+            "metadata_test": "metadata_test",
+            "osd": "osd",
+            "videoconvert": "videoconvert",
+            "convert_filter": "capsfilter",
+            "sink": "autovideosink"
+        },
+        "source": {
+            "is-live": true,
+            "do-timestamp": true
+        },
+        "source_filter": {
+            "caps": "video/x-raw,format=RGBA,width=640,height=480,framerate=30/1"
+        },
+        "convert_filter": {
+            "caps": "video/x-raw,format=I420"
+        },
+        "debug": true
+    }
+}

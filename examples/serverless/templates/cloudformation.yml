@@ -1,0 +1,572 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: 'AWS::Serverless-2016-10-31'
+Description: CloudFormation template for Smart Audit Video Streaming.
+Parameters:
+  ECRDockerImageArn:
+    Type: String
+    Default: 707132582539.dkr.ecr.us-west-2.amazonaws.com/kvs-streaming-app:latest
+  ServiceName:
+    Type: String
+    Default: video-streaming
+  ContainerPort:
+    Type: Number
+    Default: 443
+  LoadBalancerPort:
+    Type: Number
+    Default: 80
+  HealthCheckPath:
+    Type: String
+    Default: /healthcheck
+  MinContainers:
+    Type: Number
+    Default: 2
+  MaxContainers:
+    Type: Number
+    Default: 10
+  AutoScalingTargetValue:
+    Description: Target CPU utilization (%)
+    Type: Number
+    Default: 50
+  VPCID:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.192.0.0/16
+  Subnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for the subnet 1 in the Availability Zone
+    Type: String
+    Default: 10.192.10.0/24
+  Subnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the subnet 2 in the Availability Zone
+    Type: String
+    Default: 10.192.11.0/24
+
+Resources:
+
+  # Networking
+
+  VideoStreamingVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCID
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      InstanceTenancy: default
+      Tags:
+        - Key: "Project"
+          Value: gstaws
+
+  VideoStreamingVPCFlowLog:
+    Type: AWS::EC2::FlowLog
+    DependsOn: VideoStreamingVPC
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt VideoStreamingLambdaExecutionRole.Arn
+      LogGroupName: VideoStreamingCloudwatchLogsGroup
+      ResourceId: !Ref VideoStreamingVPC
+      ResourceType: VPC
+      TrafficType: ALL
+
+  VideoStreamingInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    DependsOn: VideoStreamingVPC
+    Properties:
+      Tags:
+        - Key: "Project"
+          Value: gstaws
+
+  VideoStreamingInternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    DependsOn: VideoStreamingVPC
+    Properties:
+      InternetGatewayId: !Ref VideoStreamingInternetGateway
+      VpcId: !Ref VideoStreamingVPC
+
+  VideoStreamingSubnet1:
+    Type: AWS::EC2::Subnet
+    DependsOn: VideoStreamingVPC
+    Properties:
+      VpcId: !Ref VideoStreamingVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref Subnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: "Name"
+          Value: !Sub ${ServiceName} Subnet (AZ1)
+        - Key: "Project"
+          Value: gstaws
+
+  VideoStreamingSubnet2:
+    Type: AWS::EC2::Subnet
+    DependsOn: VideoStreamingVPC
+    Properties:
+      VpcId: !Ref VideoStreamingVPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref Subnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: "Name"
+          Value: !Sub ${ServiceName} Subnet (AZ2)
+        - Key: "Project"
+          Value: gstaws
+
+  VideoStreamingRouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: VideoStreamingInternetGatewayAttachment
+    Properties:
+      VpcId: !Ref VideoStreamingVPC
+      Tags:
+        - Key: "Name"
+          Value: !Sub ${ServiceName} Routes
+        - Key: "Project"
+          Value: gstaws
+
+  VideoStreamingDefaultRoute:
+    Type: AWS::EC2::Route
+    DependsOn:
+      - VideoStreamingVPC
+    Properties:
+      RouteTableId: !Ref VideoStreamingRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref VideoStreamingInternetGateway
+
+  VideoStreamingSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - VideoStreamingVPC
+    Properties:
+      RouteTableId: !Ref VideoStreamingRouteTable
+      SubnetId: !Ref VideoStreamingSubnet1
+
+  VideoStreamingSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn:
+      - VideoStreamingVPC
+    Properties:
+      RouteTableId: !Ref VideoStreamingRouteTable
+      SubnetId: !Ref VideoStreamingSubnet2
+
+  VideoStreamingCloudwatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['-', [!Ref ServiceName, ecs-loggroup]]
+      RetentionInDays: 731
+
+  # API
+
+  # NOTE: VideoStreamingGatewayApiAccountConfig is needed to solve the following error:
+  #   CloudWatch Logs role ARN must be set in account settings to enable logging
+  #.  (Service: AmazonApiGateway; Status Code: 400; Error Code: BadRequestException; Request ID: ...)
+  # This is a one time process. As long as you have this enabled once in a region, you can deploy other
+  # stacks without the need for each stack to create this role. As a good practice, create a separate
+  # stack altogether with just the API Gateway logging role so none of your application stacks need them.
+  VideoStreamingGatewayApiAccountConfig:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn: !GetAtt "VideoStreamingGatewayApiLoggingRole.Arn"
+
+  VideoStreamingApiGatewayDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId:
+        Ref: VideoStreamingGatewayApi
+      Description: Smart Audit Deployment
+    DependsOn:
+      - VideoStreamingGatewayApiAccountConfig
+
+  VideoStreamingGatewayApi:
+    Type: AWS::Serverless::Api
+    DependsOn: VideoStreamingGatewayApiAccountConfig
+    Properties:
+      StageName: Prod
+      Cors: "'*'"
+      AccessLogSetting:
+        DestinationArn: !Sub 'arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${VideoStreamingCloudwatchLogsGroup}'
+        Format: $context.identity.sourceIp $context.identity.caller $context.identity.user [$context.requestTime] "$context.httpMethod $context.resourcePath $context.protocol" $context.status $context.responseLength $context.requestId
+      MethodSettings:
+      - DataTraceEnabled: true
+        HttpMethod: "*"
+        LoggingLevel: INFO
+        ResourcePath: /*
+      Auth:
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          UsagePlanName: !Join ['-', [!Ref ServiceName, usage-plan]]
+          Quota:
+            Limit: 100
+            Offset: 0
+            Period: DAY
+          Throttle:
+            BurstLimit: 1
+            RateLimit: 2
+          Description: "Management API Usage Plan"
+          Tags:
+            - Key: "Project"
+              Value: gstaws
+      Tags:
+        Project: Smart Audit
+        Team: Env. Mgmt. Services
+
+  VideoStreamingGatewayApiLoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref ServiceName, 'apigateway-loggingrole']]
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - "apigateway.amazonaws.com"
+            Action: "sts:AssumeRole"
+      Path: "/"
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+
+  # Lambda
+
+  VideoStreamingLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref ServiceName, 'lambdarole']]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action: ['sts:AssumeRole']
+            Effect: Allow
+            Principal:
+              Service: [
+                "lambda.amazonaws.com",
+                "ecs-tasks.amazonaws.com",
+                "sqs.amazonaws.com"
+              ]
+      Policies:
+        - PolicyName: !Join ['-', [!Ref ServiceName, 'lambda-ecs-runtask']]
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: "ecs:RunTask"
+              Resource: !Ref VideoStreamingTaskDefinition
+        - PolicyName: !Join ['-', [!Ref ServiceName, 'lambda-ecs-stoptask']]
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: "ecs:StopTask"
+              Resource: '*'
+              Condition:
+                ArnEquals:
+                  ecs:cluster: !GetAtt VideoStreamingCluster.Arn
+        - PolicyName: !Join ['-', [!Ref ServiceName, 'lambda-iam']]
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: [
+                "iam:GetRole",
+                "iam:PassRole"
+              ]
+              Resource: [
+                !GetAtt VideoStreamingExecutionRole.Arn,
+                !GetAtt VideoStreamingTaskRole.Arn
+              ]
+        - PolicyName: !Join ['-', [!Ref ServiceName, 'lambda-logs']]
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:PutLogEvents",
+                "logs:GetLogEvents",
+                "logs:FilterLogEvents",
+                "cloudwatch:PutMetricData"
+              ]
+              Resource: "arn:aws:logs:*:*:*"
+        - PolicyName: !Join ['-', [!Ref ServiceName, 'lambda-sqs']]
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: [
+                "sqs:GetQueueUrl",
+                "sqs:SendMessage"
+              ]
+              Resource: "arn:aws:sqs:*:*:*"
+      Tags:
+        - Key: "Project"
+          Value: gstaws
+
+  VideoStreamingLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Join ['-', [!Ref ServiceName, 'lambda']]
+      Description: Lambda to interact with ECS for starting and stopping streaming.
+      Handler: index.handler
+      Role:
+        Fn::GetAtt: [VideoStreamingLambdaExecutionRole, Arn]
+      Runtime: nodejs12.x
+      Timeout: 300
+      MemorySize: 3008
+      Environment:
+        Variables:
+          ecsClusterArn:
+            Fn::GetAtt: [VideoStreamingCluster, Arn]
+          ecsContainerName: !Join ['-', [!Ref ServiceName, 'container']]
+          ecsTaskDefinitionArn:
+            Ref: VideoStreamingTaskDefinition
+          ecsSecurityGroup:
+            Ref: VideoStreamingContainerSecurityGroup
+          ecsSubnet1:
+            Ref: VideoStreamingSubnet1
+          ecsSubnet2:
+            Ref: VideoStreamingSubnet2
+      CodeUri: ../src/
+      Events:
+        ApiEvent:
+          Type: Api
+          Properties:
+            Path: /streaming
+            Method: POST
+            RestApiId: !Ref VideoStreamingGatewayApi
+        CloudWatchLogsEvent:
+          Type: CloudWatchLogs
+          Properties:
+            LogGroupName: !Ref VideoStreamingCloudwatchLogsGroup
+            FilterPattern: ""
+      Tags:
+        Project: gstaws
+
+  # ECS
+
+  VideoStreamingCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Join ['-', [!Ref ServiceName, cluster]]
+
+  VideoStreamingTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    DependsOn: VideoStreamingCloudwatchLogsGroup
+    Properties:
+      Family: !Join ['-', [!Ref ServiceName, task-definition]]
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 4096
+      Memory: 8GB
+      ExecutionRoleArn: !Ref VideoStreamingExecutionRole
+      TaskRoleArn: !Ref VideoStreamingTaskRole
+      ContainerDefinitions:
+        - Name: !Join ['-', [!Ref ServiceName, 'container']]
+          Image: !Ref ECRDockerImageArn
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-region: !Ref AWS::Region
+              awslogs-group: !Ref VideoStreamingCloudwatchLogsGroup
+              awslogs-stream-prefix: !Join ['-', [!Ref ServiceName, 'container']]
+      Tags:
+        - Key: "Project"
+          Value: gstaws
+
+  VideoStreamingExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref ServiceName, execution-role]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+
+  VideoStreamingTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref ServiceName, task-role]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: !Join ['-', [!Ref ServiceName, kvs-service]]
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Action: [
+                  'kinesisvideo:DescribeStream',
+                  'kinesisvideo:GetDataEndpoint',
+                  'kinesisvideo:CreateStream',
+                  'kinesisvideo:PutMedia',
+                  'kinesisvideo:ListStreams',
+                  'kinesisvideo:DeleteStream'
+                ]
+                Resource: '*'
+        - PolicyName: !Join ['-', [!Ref ServiceName, task-sqs]]
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: [
+                "sqs:CreateQueue",
+                "sqs:DeleteQueue",
+                "sqs:GetQueueUrl",
+                "sqs:SendMessage",
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage"
+              ]
+              Resource: "arn:aws:sqs:*:*:*"
+
+  VideoStreamingAutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join ['-', [!Ref ServiceName, autoscaling-role]]
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceAutoscaleRole'
+
+  VideoStreamingContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    DependsOn:
+      - VideoStreamingVPC
+    Properties:
+      GroupDescription: !Join ['-', [!Ref ServiceName, container-security-group]]
+      VpcId: !Ref VideoStreamingVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          SourceSecurityGroupId: !Ref VideoStreamingLoadBalancerSecurityGroup
+
+  VideoStreamingLoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Join ['-', [!Ref ServiceName, loadbalancer-security-group]]
+      VpcId: !Ref VideoStreamingVPC
+      SecurityGroupIngress:
+        - Description: Ingress rule LoadBalancerPort open to everywhere over TCP
+          IpProtocol: tcp
+          FromPort: !Ref LoadBalancerPort
+          ToPort: !Ref LoadBalancerPort
+          CidrIp: 0.0.0.0/0
+
+  VideoStreamingECSService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - VideoStreamingListenerHTTP
+    Properties:
+      ServiceName: !Ref ServiceName
+      Cluster: !Ref VideoStreamingCluster
+      TaskDefinition: !Ref VideoStreamingTaskDefinition
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+      DesiredCount: 2
+      HealthCheckGracePeriodSeconds: 30
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref VideoStreamingSubnet1
+            - !Ref VideoStreamingSubnet2
+          SecurityGroups:
+            - !Ref VideoStreamingContainerSecurityGroup
+      LoadBalancers:
+        - ContainerName: !Join ['-', [!Ref ServiceName, 'container']]
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref VideoStreamingTargetGroup
+
+  VideoStreamingTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckTimeoutSeconds: 5
+      UnhealthyThresholdCount: 2
+      HealthyThresholdCount: 2
+      Name: !Join ['-', [!Ref ServiceName, target]]
+      Port: !Ref ContainerPort
+      Protocol: HTTPS
+      TargetGroupAttributes:
+        - Key: deregistration_delay.timeout_seconds
+          Value: 0 # default is 300
+      TargetType: ip
+      VpcId: !Ref VideoStreamingVPC
+
+  VideoStreamingListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - TargetGroupArn: !Ref VideoStreamingTargetGroup
+          Type: forward
+      LoadBalancerArn: !Ref VideoStreamingLoadBalancer
+      Port: !Ref LoadBalancerPort
+      Protocol: HTTP
+
+  VideoStreamingListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref VideoStreamingListenerHTTP
+      Priority: 1
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - '/*'
+      Actions:
+        - TargetGroupArn: !Ref VideoStreamingTargetGroup
+          Type: forward
+
+  VideoStreamingLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: 60
+      Name: !Join ['-', [!Ref ServiceName, loadbalancer]]
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref VideoStreamingLoadBalancerSecurityGroup
+      Subnets:
+        - !Ref VideoStreamingSubnet1
+        - !Ref VideoStreamingSubnet2
+
+  VideoStreamingAutoScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn:
+      - VideoStreamingLoadBalancer
+    Properties:
+      MinCapacity: !Ref MinContainers
+      MaxCapacity: !Ref MaxContainers
+      ResourceId: !Join ['/', [service, !Ref VideoStreamingCluster, !GetAtt VideoStreamingECSService.Name]]
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+      RoleARN: !GetAtt VideoStreamingAutoScalingRole.Arn
+
+  VideoStreamingAutoScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Join ['-', [!Ref ServiceName, autoscaling-policy]]
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref VideoStreamingAutoScalingTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        ScaleInCooldown: 10
+        ScaleOutCooldown: 10
+        TargetValue: !Ref AutoScalingTargetValue
+
+Outputs:
+  ApiURL:
+    Description: "API endpoint URL for Prod environment"
+    Value: !Sub "https://${VideoStreamingGatewayApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/streaming"
+  ECSClusterName:
+    Description: "Name of the AWS ECS cluster created as part of this deployment"
+    Value: !Ref VideoStreamingCluster

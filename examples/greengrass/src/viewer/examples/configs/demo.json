@@ -1,0 +1,192 @@
+{
+    "camera_0": {
+        "enabled": true,
+        "pipeline": {
+            "source": "videotestsrc",
+            "source_filter": "capsfilter",
+            "timeoverlay": "timeoverlay",
+            "encoder": "x264enc",
+            "encoder_filter": "capsfilter",
+            "mux": "mpegtsmux",
+            "sink": "hlssink"
+        },
+        "source": {
+            "is-live": true,
+            "do-timestamp": true
+        },
+        "source_filter": {
+            "caps": "video/x-raw,width=640,height=480,framerate=30/1"
+        },
+        "encoder_filter": {
+            "caps": "video/x-h264, profile=main"
+        },
+        "sink": {
+            "max-files": 5,
+            "playlist-location": "/video/playlist_camera_0.m3u8",
+            "location": "/video/segment_camera_0_%05d.ts"
+        },
+        "debug": true
+    },
+    "camera_1": {
+        "enabled": true,
+        "pipeline": {
+            "source": "videotestsrc",
+            "source_filter": "capsfilter",
+            "timeoverlay": "timeoverlay",
+            "encoder": "x264enc",
+            "encoder_filter": "capsfilter",
+            "mux": "mpegtsmux",
+            "sink": "hlssink"
+        },
+        "source": {
+            "pattern": "ball",
+            "is-live": true,
+            "do-timestamp": true
+        },
+        "source_filter": {
+            "caps": "video/x-raw,width=640,height=480,framerate=30/1"
+        },
+        "encoder_filter": {
+            "caps": "video/x-h264, profile=main"
+        },
+        "sink": {
+            "max-files": 5,
+            "playlist-location": "/video/playlist_camera_1.m3u8",
+            "location": "/video/segment_camera_1_%05d.ts"
+        },
+        "debug": true
+    },
+    "camera_2": {
+        "enabled": true,
+        "pipeline": "VIDEO",
+        "source": {
+            "name": "rtspsrc",
+            "location": "rtsp://192.168.1.64:554",
+            "user-id": "admin",
+            "user-pw": "hikvisioncamera!",
+            "short-header": true,
+            "width": 640,
+            "height": 480
+        },
+        "sink": {
+            "name": "hlssink",
+            "max-files": 5,
+            "playlist-location": "/video/playlist_camera_2.m3u8",
+            "location": "/video/segment_camera_2_%05d.ts"
+        },
+        "debug": true
+    },
+    "camera_3": {
+        "enabled": true,
+        "pipeline": {
+            "source": "v4l2src",
+            "source_filter": "capsfilter",
+            "videoconvert": "videoconvert",
+            "convert_filter": "capsfilter",
+            "encoder": "x264enc",
+            "encoder_filter": "capsfilter",
+            "mux": "mpegtsmux",
+            "sink": "hlssink"
+        },
+        "source": {
+            "device": "/dev/video1"
+        },
+        "source_filter": {
+            "caps": "video/x-raw,width=640,height=480,framerate=30/1,format=YUY2"
+        },
+        "convert_filter": {
+            "caps": "video/x-raw,format=(string)I420"
+        },
+        "encoder_filter": {
+            "caps": "video/x-h264, profile=main"
+        },
+        "sink": {
+            "max-files": 5,
+            "playlist-location": "/video/playlist_camera_3.m3u8",
+            "location": "/video/segment_camera_3_%05d.ts"
+        },
+        "debug": true
+    },
+    "camera_0_dvr": {
+        "enabled": true,
+        "pipeline": "DVR",
+        "source": {
+            "name": "videotestsrc",
+            "is-live": true,
+            "do-timestamp": true,
+            "width": 640,
+            "height": 480,
+            "fps": 30
+        },
+        "sink": {
+            "name": "splitmuxsink",
+            "location": "/video/camera_0/output_%02d.mp4",
+            "segment_duration": "00:01:00",
+            "time_to_keep_days": 1
+        },
+        "debug": true
+    },
+    "camera_1_dvr": {
+        "enabled": true,
+        "pipeline": "DVR",
+        "source": {
+            "name": "videotestsrc",
+            "is-live": true,
+            "do-timestamp": true,
+            "pattern": "ball",
+            "width": 640,
+            "height": 480,
+            "fps": 30
+        },
+        "sink": {
+            "name": "splitmuxsink",
+            "location": "/video/camera_1/output_%02d.mp4",
+            "segment_duration": "00:01:00",
+            "time_to_keep_days": 1
+        },
+        "debug": true
+    },
+    "camera_2_kvs": {
+        "enabled": false,
+        "pipeline": "video",
+        "source": {
+            "name": "rtspsrc",
+            "location": "rtsp://192.168.1.64:554",
+            "user-id": "admin",
+            "user-pw": "hikvisioncamera!",
+            "short-header": true
+        },
+        "sink": {
+            "name": "kvssink",
+            "stream-name": "TestStream"
+        },
+        "debug": true
+    },
+    "deepstream_video": {
+        "enabled": false,
+        "pipeline": "DeepStream",
+        "source": {
+            "name": "filesrc",
+            "location": "/opt/nvidia/deepstream/deepstream/samples/streams/sample_720p.mp4",
+            "do-timestamp": false
+        },
+        "nvstreammux": {
+            "width": 1280,
+            "height": 720,
+            "batch-size": 1
+        },
+        "nvinfer": {
+            "enabled": true,
+            "config-file-path": "nvinfer_config.txt"
+        },
+        "encoder_filter": {
+            "caps": "video/x-h264, profile=main"
+        },
+        "sink": {
+            "name": "hlssink",
+            "max-files": 5,
+            "playlist-location": "/video/playlist_ds.m3u8",
+            "location": "/video/segment_ds_%05d.ts"
+        }
+    }
+}

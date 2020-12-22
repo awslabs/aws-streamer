@@ -1,0 +1,495 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM Template for Greengrass group
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 3
+
+Parameters:
+  CoreName:
+    Description: Greengrass Core / IoT Thing name to be created.
+    Type: String
+  CreateThingFunctionArn:
+    Type: String
+  GreengrassResourceRoleArn:
+    Type: String
+  VideoVolumePath:
+    Type: String
+  VideoBucketName:
+    Type: String
+  ApiGatewayUrl:
+    Type: String
+  RoleAlias:
+    Type: String
+  StackName:
+    Type: String
+  GstPluginPath:
+    Type: String
+  LdLibraryPath:
+    Type: String
+  AliasName:
+    Type: String
+  FunctionArnList:
+    Type: String
+  HardwareType:
+    Type: String
+
+Conditions:
+  NvidiaHardware: !Equals [ !Ref HardwareType, nvidia ]
+  GenericHardware: !Equals [ !Ref HardwareType, generic ]
+
+Resources:
+  GreengrassGroup:
+    Type: AWS::Greengrass::Group
+    Properties:
+      Name: !Ref CoreName
+      RoleArn: !Ref GreengrassResourceRoleArn
+      InitialVersion:
+        CoreDefinitionVersionArn: !Ref CoreDefinitionVersion
+        FunctionDefinitionVersionArn: !If [NvidiaHardware, !Ref FunctionDefinitionVersionNvidia, !Ref FunctionDefinitionVersion]
+        SubscriptionDefinitionVersionArn: !Ref SubscriptionDefinitionVersion
+        LoggerDefinitionVersionArn: !Ref LoggerDefinitionVersion
+        ResourceDefinitionVersionArn: !Ref ResourceDefinitionVersion
+
+  CoreDefinition:
+    Type: 'AWS::Greengrass::CoreDefinition'
+    Properties:
+      Name: !Ref CoreName
+
+  CoreDefinitionVersion:
+    Type: AWS::Greengrass::CoreDefinitionVersion
+    Properties:
+      CoreDefinitionId: !Ref CoreDefinition
+      Cores:
+        - Id: !Ref CoreName
+          ThingArn: !Join
+            - ":"
+            - - "arn:aws:iot"
+              - !Ref AWS::Region
+              - !Ref AWS::AccountId
+              - !Join
+                - "/"
+                - - "thing"
+                  - !Ref CoreName
+          CertificateArn: !Join
+            - ":"
+            - - "arn:aws:iot"
+              - !Ref AWS::Region
+              - !Ref AWS::AccountId
+              - !Join
+                - "/"
+                - - "cert"
+                  - !GetAtt IoTThing.certificateId
+          SyncShadow: False
+
+  DeviceDefinition:
+    Type: 'AWS::Greengrass::DeviceDefinition'
+    Properties:
+      Name: !Join ["_", [!Ref CoreName, "Device"] ]
+
+  FunctionDefinition:
+    Type: AWS::Greengrass::FunctionDefinition
+    Properties:
+      Name: FunctionDefinition
+
+  FunctionDefinitionVersion:
+    Type: AWS::Greengrass::FunctionDefinitionVersion
+    Condition: GenericHardware
+    Properties:
+      FunctionDefinitionId: !GetAtt FunctionDefinition.Id
+      DefaultConfig:
+        Execution:
+          IsolationMode: GreengrassContainer
+      Functions:
+        - Id: !Join ["_", [!Ref CoreName, "GStreamerPipeline"] ]
+          FunctionArn: !Select [0, !Split [",", !Ref FunctionArnList]]
+          FunctionConfiguration:
+            Pinned: True
+            Timeout: 30
+            MemorySize: 2048576
+            EncodingType: json
+            Environment:
+              Variables:
+                VIDEO_VOLUME_PATH: !Ref VideoVolumePath
+                ROLE_ALIAS: !Ref RoleAlias
+                GST_PLUGIN_PATH: !Ref GstPluginPath
+                LD_LIBRARY_PATH: !Ref LdLibraryPath
+                THING_NAME: !Ref CoreName
+              ResourceAccessPolicies:
+                - ResourceId: VideoVolumeResource
+                  Permission: rw
+              Execution:
+                IsolationMode: GreengrassContainer
+        - Id: !Join ["_", [!Ref CoreName, "DataUploader"] ]
+          FunctionArn: !Select [1, !Split [",", !Ref FunctionArnList]]
+          FunctionConfiguration:
+            Pinned: False
+            Timeout: 30
+            MemorySize: 524288
+            EncodingType: json
+            Environment:
+              Variables:
+                VIDEO_VOLUME_PATH: !Ref VideoVolumePath
+                VIDEO_BUCKET_NAME: !Ref VideoBucketName
+                ROLE_ALIAS: !Ref RoleAlias
+                THING_NAME: !Ref CoreName
+              ResourceAccessPolicies:
+                - ResourceId: VideoVolumeResource
+                  Permission: rw
+              Execution:
+                IsolationMode: GreengrassContainer
+        - Id: !Join ["_", [!Ref CoreName, "Viewer"] ]
+          FunctionArn: !Select [2, !Split [",", !Ref FunctionArnList]]
+          FunctionConfiguration:
+            Pinned: True
+            Timeout: 30
+            MemorySize: 128000
+            EncodingType: json
+            Environment:
+              Variables:
+                VIDEO_VOLUME_PATH: !Ref VideoVolumePath
+                VIDEO_BUCKET_NAME: !Ref VideoBucketName
+                API_GATEWAY_URL: !Ref ApiGatewayUrl
+                THING_NAME: !Ref CoreName
+              ResourceAccessPolicies:
+                - ResourceId: VideoVolumeResource
+                  Permission: rw
+              Execution:
+                IsolationMode: GreengrassContainer
+
+  FunctionDefinitionVersionNvidia:
+    Type: AWS::Greengrass::FunctionDefinitionVersion
+    Condition: NvidiaHardware
+    Properties:
+      FunctionDefinitionId: !GetAtt FunctionDefinition.Id
+      DefaultConfig:
+        Execution:
+          IsolationMode: GreengrassContainer
+      Functions:
+        - Id: !Join ["_", [!Ref CoreName, "GStreamerPipeline"] ]
+          FunctionArn: !Select [0, !Split [",", !Ref FunctionArnList]]
+          FunctionConfiguration:
+            Pinned: True
+            Timeout: 30
+            MemorySize: 2097152
+            EncodingType: json
+            Environment:
+              Variables:
+                VIDEO_VOLUME_PATH: !Ref VideoVolumePath
+                ROLE_ALIAS: !Ref RoleAlias
+                GST_PLUGIN_PATH: !Ref GstPluginPath
+                LD_LIBRARY_PATH: !Ref LdLibraryPath
+                THING_NAME: !Ref CoreName
+              AccessSysfs: 'true'
+              ResourceAccessPolicies:
+                - ResourceId: VideoVolumeResource
+                  Permission: rw
+                - ResourceId: shm
+                  Permission: rw
+                - ResourceId: tmp
+                  Permission: rw
+                - ResourceId: nvhost-sched-gpu
+                  Permission: rw
+                - ResourceId: nvhost-isp
+                  Permission: rw
+                - ResourceId: nvhost-ctrl-nvdec
+                  Permission: rw
+                - ResourceId: nvhost-ctrl
+                  Permission: rw
+                - ResourceId: nvhost-ctrl-vi
+                  Permission: rw
+                - ResourceId: nvhdcp0
+                  Permission: rw
+                - ResourceId: nvhost-dbg-gpu
+                  Permission: rw
+                - ResourceId: nvhost-ctrl-gpu
+                  Permission: rw
+                - ResourceId: nvhost-tsec
+                  Permission: rw
+                - ResourceId: nvhost-vic
+                  Permission: rw
+                - ResourceId: nvmap
+                  Permission: rw
+                - ResourceId: nvhost-gpu
+                  Permission: rw
+                - ResourceId: nvhost-prof-gpu
+                  Permission: rw
+                - ResourceId: nvhost-nvdec
+                  Permission: rw
+                - ResourceId: cuda
+                  Permission: ro
+                - ResourceId: nvhost-msenc
+                  Permission: rw
+                - ResourceId: nvhost-as-gpu
+                  Permission: rw
+              Execution:
+                IsolationMode: GreengrassContainer
+        - Id: !Join ["_", [!Ref CoreName, "DataUploader"] ]
+          FunctionArn: !Select [1, !Split [",", !Ref FunctionArnList]]
+          FunctionConfiguration:
+            Pinned: False
+            Timeout: 30
+            MemorySize: 524288
+            EncodingType: json
+            Environment:
+              Variables:
+                VIDEO_VOLUME_PATH: !Ref VideoVolumePath
+                VIDEO_BUCKET_NAME: !Ref VideoBucketName
+                ROLE_ALIAS: !Ref RoleAlias
+                THING_NAME: !Ref CoreName
+              ResourceAccessPolicies:
+                - ResourceId: VideoVolumeResource
+                  Permission: rw
+              Execution:
+                IsolationMode: GreengrassContainer
+        - Id: !Join ["_", [!Ref CoreName, "Viewer"] ]
+          FunctionArn: !Select [2, !Split [",", !Ref FunctionArnList]]
+          FunctionConfiguration:
+            Pinned: True
+            Timeout: 30
+            MemorySize: 128000
+            EncodingType: json
+            Environment:
+              Variables:
+                VIDEO_VOLUME_PATH: !Ref VideoVolumePath
+                VIDEO_BUCKET_NAME: !Ref VideoBucketName
+                API_GATEWAY_URL: !Ref ApiGatewayUrl
+                THING_NAME: !Ref CoreName
+              ResourceAccessPolicies:
+                - ResourceId: VideoVolumeResource
+                  Permission: rw
+              Execution:
+                IsolationMode: GreengrassContainer
+
+  SubscriptionDefinition:
+    Type: 'AWS::Greengrass::SubscriptionDefinition'
+    Properties:
+      Name: SubscriptionDefinition
+
+  SubscriptionDefinitionVersion:
+    Type: 'AWS::Greengrass::SubscriptionDefinitionVersion'
+    Properties:
+      SubscriptionDefinitionId: !Ref SubscriptionDefinition
+      Subscriptions:
+        - Id: inference-pub
+          Source: !Join
+            - ":"
+            - - "arn:aws:iot"
+              - !Ref AWS::Region
+              - !Ref AWS::AccountId
+              - !Join
+                - "/"
+                - - "thing"
+                  - !Ref CoreName
+          Subject: iot/test
+          Target: 'cloud'
+        - Id: subscription-datauploader-req
+          Source: 'cloud'
+          Subject: !Join ["/", [!Ref CoreName, 'req/data']]
+          Target: !Select [1, !Split [",", !Ref FunctionArnList]]
+        - Id: subscription-datauploader-feed
+          Source: !Select [1, !Split [",", !Ref FunctionArnList]]
+          Subject: !Join ["/", [!Ref CoreName, 'data/res']]
+          Target: 'cloud'
+        - Id: subscription-gstreamerpipeline-config
+          Source: 'cloud'
+          Subject: !Join ["/", [!Ref CoreName, 'config/camera']]
+          Target: !Select [0, !Split [",", !Ref FunctionArnList]]
+        - Id: subscription-gstreamerpipeline-feed
+          Source: !Select [0, !Split [",", !Ref FunctionArnList]]
+          Subject: !Join ["/", [!Ref CoreName, 'camera/feed']]
+          Target: 'cloud'
+
+  ResourceDefinition:
+    Type: 'AWS::Greengrass::ResourceDefinition'
+    Properties:
+      Name: ResourceDefinition
+
+  ResourceDefinitionVersion:
+      Type: 'AWS::Greengrass::ResourceDefinitionVersion'
+      Properties:
+        ResourceDefinitionId: !Ref ResourceDefinition
+        Resources:
+          - Id: VideoVolumeResource
+            Name: VideoVolumeResource
+            ResourceDataContainer:
+              LocalVolumeResourceData:
+                SourcePath: !Ref VideoVolumePath
+                DestinationPath: !Ref VideoVolumePath
+          - Id: shm
+            Name: shm
+            ResourceDataContainer:
+              LocalVolumeResourceData:
+                SourcePath: /dev/shm
+                DestinationPath: /dev/shm
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: tmp
+            Name: tmp
+            ResourceDataContainer:
+              LocalVolumeResourceData:
+                SourcePath: /tmp
+                DestinationPath: /tmp
+          - Id: cuda
+            Name: cuda
+            ResourceDataContainer:
+              LocalVolumeResourceData:
+                SourcePath: /usr/local/cuda
+                DestinationPath: /usr/local/cuda
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-sched-gpu
+            Name: nvhost-sched-gpu
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-sched-gpu
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-isp
+            Name: nvhost-isp
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-isp
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-ctrl-nvdec
+            Name: nvhost-ctrl-nvdec
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-ctrl-nvdec
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-ctrl
+            Name: nvhost-ctrl
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-ctrl
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-ctrl-vi
+            Name: nvhost-ctrl-vi
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-ctrl-vi
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhdcp0
+            Name: nvhdcp0
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhdcp0
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-dbg-gpu
+            Name: nvhost-dbg-gpu
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-dbg-gpu
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-ctrl-gpu
+            Name: nvhost-ctrl-gpu
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-ctrl-gpu
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-tsec
+            Name: nvhost-tsec
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-tsec
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-vic
+            Name: nvhost-vic
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-vic
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvmap
+            Name: nvmap
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvmap
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-gpu
+            Name: nvhost-gpu
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-gpu
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-prof-gpu
+            Name: nvhost-prof-gpu
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-prof-gpu
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-nvdec
+            Name: nvhost-nvdec
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-nvdec
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-msenc
+            Name: nvhost-msenc
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-msenc
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+          - Id: nvhost-as-gpu
+            Name: nvhost-as-gpu
+            ResourceDataContainer:
+              LocalDeviceResourceData:
+                SourcePath: /dev/nvhost-as-gpu
+                GroupOwnerSetting:
+                   AutoAddGroupOwner: True
+
+  LoggerDefinition:
+    Type: 'AWS::Greengrass::LoggerDefinition'
+    Properties:
+      Name: LoggerDefinition
+
+  LoggerDefinitionVersion:
+    Type: AWS::Greengrass::LoggerDefinitionVersion
+    Properties:
+      LoggerDefinitionId: !Ref LoggerDefinition
+      Loggers:
+        - Component: GreengrassSystem
+          Id: GreengrassSystem-Local
+          Level: INFO
+          Space: 25000
+          Type: FileSystem
+        - Component: GreengrassSystem
+          Id: GreengrassSystem-Cloud
+          Level: INFO
+          Type: AWSCloudWatch
+        - Component: Lambda
+          Id: Lambda-Local
+          Level: INFO
+          Space: 25000
+          Type: FileSystem
+        - Component: Lambda
+          Id: Lambda-Cloud
+          Level: INFO
+          Type: AWSCloudWatch
+
+  # Supporting resources from AWS IoT Core
+
+  IoTThing:
+    # Resource creates thing, certificate key pair, and IoT policy
+    Type: Custom::IoTThing
+    Properties:
+      ServiceToken: !Ref CreateThingFunctionArn
+      ThingName: !Ref CoreName
+      StackName: !Ref StackName
+

@@ -1,0 +1,22 @@
+{
+    "deepstream_test": {
+        "pipeline": "DeepStream",
+        "source": {
+            "name": "filesrc",
+            "location": "/opt/nvidia/deepstream/deepstream/samples/streams/sample_720p.mp4",
+            "do-timestamp": false
+        },
+        "sink": {
+            "name": "autovideosink"
+        },
+        "nvstreammux": {
+            "width": 1280,
+            "height": 720,
+            "batch-size": 1
+        },
+        "nvinfer": {
+            "enabled": true,
+            "config-file-path": "../deepstream/nvinfer_config.txt"
+        }
+    }
+}

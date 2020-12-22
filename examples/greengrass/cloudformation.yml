@@ -1,0 +1,248 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Streaming Pipeline with Greengrass Lambdas and Gateway API
+
+Parameters:
+  CoreNamePrefix:
+    Description: Prefix name of Greengrass Core / IoT Thing to be created.
+    Type: String
+    Default: DVR
+  RoleAliasPrefix:
+    Type: String
+    Default: DeviceRoleAlias
+  VideoVolume:
+    Type: String
+    Default: /video
+  FunctionArnList:
+    Type: String
+    Default: gstreamer_pipeline
+  HardwareType:
+    Description: "Edge gateway hardware type: nvidia or generic."
+    Type: String
+    Default: nvidia
+
+Resources:
+
+  ApiGatewayStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: src/apigw_template.yml
+      Parameters:
+        CoreName: !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ]
+        LambdaFunctionName: !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName", iot-publisher] ]
+        ApiGatewayStageName: Test
+
+  GreengrassGroupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: src/greengrass_template.yml
+      Parameters:
+        GreengrassResourceRoleArn: !GetAtt GreengrassResourceRole.Arn
+        CreateThingFunctionArn: !GetAtt CreateThingFunction.Arn
+        CoreName: !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ]
+        VideoBucketName: !Ref VideoBucket
+        VideoVolumePath: !Ref VideoVolume
+        ApiGatewayUrl:
+          Fn::GetAtt:
+          - ApiGatewayStack
+          - Outputs.ApiGatewayInvokeURL
+        RoleAlias: !Join ["-", [!Ref RoleAliasPrefix, !Ref "AWS::StackName"] ]
+        StackName: !Ref "AWS::StackName"
+        GstPluginPath: lib
+        LdLibraryPath: lib
+        AliasName: 'dev'
+        FunctionArnList: !Ref FunctionArnList
+        HardwareType: !Ref HardwareType
+
+  GreengrassConfigsBucket:
+    Type: AWS::S3::Bucket
+
+  VideoBucket:
+    Type: AWS::S3::Bucket
+
+  CreateThingFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/create_thing/
+      Handler: app.handler
+      Runtime: python3.7
+      Environment:
+        Variables:
+          GG_CONFIGS_BUCKET: !Ref GreengrassConfigsBucket
+          ROLE_ALIAS_NAME: !Join ["-", [!Ref RoleAliasPrefix, !Ref "AWS::StackName"] ]
+          ROLE_ALIAS_ROLE_ARN: !GetAtt RoleAliasRole.Arn
+      Policies:
+          - AWSLambdaExecute # Managed Policy
+          - AWSIoTConfigAccess
+          - AmazonS3FullAccess
+          - Version: '2012-10-17' # Policy Document
+            Statement:
+              - Effect: Allow
+                Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action:
+                - s3:PutObject
+                - s3:DeleteObject
+                Resource:
+                - !Sub arn:aws:s3:::${GreengrassConfigsBucket}
+                - !Sub arn:aws:s3:::${GreengrassConfigsBucket}/*
+              - Effect: Allow
+                Action:
+                - iam:CreateRole
+                - iam:AttachRolePolicy
+                - iam:GetRole
+                - iam:DeleteRole
+                - iam:PassRole
+                Resource:
+                - !Join ["", ["arn:aws:iam::", !Ref "AWS::AccountId", ":role/greengrass_cfn_", !Ref "AWS::StackName", "_ServiceRole"] ]
+                - !GetAtt RoleAliasRole.Arn
+
+  GroupDeploymentReset:
+    Type: Custom::GroupDeploymentReset
+    Properties:
+      ServiceToken: !GetAtt GroupDeploymentResetFunction.Arn
+      Region: !Ref "AWS::Region"
+      ThingName: !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ]
+
+  GroupDeploymentResetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: Resets any deployments during stack delete and manages Greengrass service role needs
+      CodeUri: src/group_deployment_reset/
+      Handler: app.handler
+      Runtime: python3.7
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      Environment:
+        Variables:
+          ROLE_ARN: !GetAtt GreengrassResourceRole.Arn
+
+  GStreamerPipelineLogRule:
+    Type: 'AWS::IoT::TopicRule'
+    Properties:
+      RuleName:
+        Fn::Join:
+        - '_'
+        - Fn::Split:
+          - '-'
+          - !Join [ "", [ !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ], "_camera_feed" ] ]
+      TopicRulePayload:
+        RuleDisabled: 'false'
+        Sql: !Join ["", [ "SELECT * FROM '", !Join [ "", [ !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ], "/camera/feed" ] ],  "'"] ]
+        Actions:
+          - S3:
+              BucketName: !Ref VideoBucket
+              RoleArn: !GetAtt TopicRuleRole.Arn
+              Key: !Join [ "", [ !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ], ".log" ] ]
+
+  DataUploaderLogRule:
+    Type: 'AWS::IoT::TopicRule'
+    Properties:
+      RuleName:
+        Fn::Join:
+        - '_'
+        - Fn::Split:
+          - '-'
+          - !Join [ "", [ !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ], "_data_res" ] ]
+      TopicRulePayload:
+        RuleDisabled: 'false'
+        Sql: !Join ["", [ "SELECT * FROM '", !Join [ "", [ !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ], "/data/res" ] ],  "'"] ]
+        Actions:
+          - S3:
+              BucketName: !Ref VideoBucket
+              RoleArn: !GetAtt TopicRuleRole.Arn
+              Key: !Join [ "", [ !Join ["-", [!Ref CoreNamePrefix, !Ref "AWS::StackName"] ], ".log" ] ]
+
+  TopicRuleRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - iot.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Join [ "", [!GetAtt VideoBucket.Arn, "/*"] ]
+
+  # Roles
+  RoleAliasRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [credentials.iot.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonKinesisVideoStreamsFullAccess
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGreengrassResourceAccessRolePolicy
+        - arn:aws:iam::aws:policy/AWSIoTConfigAccess
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+      Policies:
+      - PolicyName: root
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+              - iam:PassRole
+            Resource: !GetAtt GreengrassResourceRole.Arn
+
+  GreengrassResourceRole:
+    # Role for deployed Lambda functions to a Greengrass core to call other
+    # AWS services directly
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: greengrass.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGreengrassResourceAccessRolePolicy
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+        - arn:aws:iam::aws:policy/AWSIoTConfigAccess
+        - arn:aws:iam::aws:policy/AmazonKinesisVideoStreamsFullAccess
+
+Outputs:
+  ExportsStackName:
+    Value: !Ref 'AWS::StackName'
+    Export:
+      Name: !Sub 'ExportsStackName-${AWS::StackName}'
+
+  GreengrassConfigBucket:
+    Description: "S3 bucket with Greengrass configurations and logs"
+    Value: !Ref GreengrassConfigsBucket

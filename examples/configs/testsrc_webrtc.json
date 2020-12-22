@@ -1,0 +1,10 @@
+{
+    "test_webrtc": {
+        "enabled": true,
+        "pipeline": "cmd",
+        "command": [ "kvsWebrtcClientMasterGstSample", "MySignallingChannel" ],
+        "path": "gst_plugins/kvs_webrtc",
+        "env": "aws",
+        "debug": true
+    }
+}

@@ -1,0 +1,25 @@
+{
+    "test_kvs": {
+        "enabled": true,
+        "pipeline": "video",
+        "source": {
+            "name": "videotestsrc",
+            "is-live": true,
+            "do-timestamp": true,
+            "width": 320,
+            "height": 240,
+            "fps": 30
+        },
+        "sink": {
+            "name": "kvssink",
+            "stream-name": "TestStream"
+        },
+        "encoder": {
+            "enabled": true
+        },
+        "timeoverlay": {
+            "enabled": true
+        },
+        "debug": true
+    }
+}

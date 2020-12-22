@@ -1,0 +1,2 @@
+include gstaws/gst_pipeline/config.json
+recursive-include gstaws *.py

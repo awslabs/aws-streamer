@@ -1,0 +1,33 @@
+{
+    "usb_hls": {
+        "enabled": true,
+        "pipeline": {
+            "source": "v4l2src",
+            "source_filter": "capsfilter",
+            "videoconvert": "videoconvert",
+            "convert_filter": "capsfilter",
+            "encoder": "x264enc",
+            "encoder_filter": "capsfilter",
+            "mux": "mpegtsmux",
+            "sink": "hlssink"
+        },
+        "source": {
+            "device": "/dev/video1"
+        },
+        "source_filter": {
+            "caps": "video/x-raw,width=640,height=480,framerate=30/1,format=YUY2"
+        },
+        "convert_filter": {
+            "caps": "video/x-raw,format=(string)I420"
+        },
+        "encoder_filter": {
+            "caps": "video/x-h264, profile=main"
+        },
+        "sink": {
+            "max-files": 5,
+            "playlist-location": "/video/playlist_usb.m3u8",
+            "location": "/video/segment_usb_%05d.ts"
+        },
+        "debug": true
+    }
+}

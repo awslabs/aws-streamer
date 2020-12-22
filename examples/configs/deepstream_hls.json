@@ -1,0 +1,29 @@
+{
+    "deepstream_test": {
+        "enabled": true,
+        "pipeline": "DeepStream",
+        "source": {
+            "name": "filesrc",
+            "location": "/opt/nvidia/deepstream/deepstream/samples/streams/sample_720p.mp4",
+            "do-timestamp": false
+        },
+        "nvstreammux": {
+            "width": 1280,
+            "height": 720,
+            "batch-size": 1
+        },
+        "nvinfer": {
+            "enabled": true,
+            "config-file-path": "nvinfer_config.txt"
+        },
+        "encoder_filter": {
+            "caps": "video/x-h264, profile=main"
+        },
+        "sink": {
+            "name": "hlssink",
+            "max-files": 5,
+            "playlist-location": "/video/playlist_ds.m3u8",
+            "location": "/video/segment_ds_%05d.ts"
+        }
+    }
+}

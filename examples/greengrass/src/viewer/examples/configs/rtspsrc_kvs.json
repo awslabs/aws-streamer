@@ -1,0 +1,18 @@
+{
+    "rtsp_kvs": {
+        "enabled": true,
+        "pipeline": "video",
+        "source": {
+            "name": "rtspsrc",
+            "location": "rtsp://192.168.1.64:554",
+            "user-id": "admin",
+            "user-pw": "hikvisioncamera!",
+            "short-header": true
+        },
+        "sink": {
+            "name": "kvssink",
+            "stream-name": "TestStream"
+        },
+        "debug": true
+    }
+}

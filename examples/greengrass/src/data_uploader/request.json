@@ -1,0 +1,12 @@
+{
+    "request": {
+        "gateway_id": "",
+        "camera_id": "",
+        "prefix": "",
+        "timestamp_from": "YYYY-MM-DD HH:mm:SS",
+        "timestamp_to": "YYYY-MM-DD HH:mm:SS",
+        "merge_videos": true,
+        "s3_bucket": "",
+        "s3_folder": ""
+    }
+}

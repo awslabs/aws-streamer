@@ -1,0 +1,22 @@
+{
+    "test_dvr": {
+        "enabled": true,
+        "pipeline": "DVR",
+        "source": {
+            "name": "videotestsrc",
+            "is-live": true,
+            "do-timestamp": true,
+            "width": 640,
+            "height": 480,
+            "fps": 30
+        },
+        "sink": {
+            "name": "splitmuxsink",
+            "location": "/video/output_%02d.mp4",
+            "segment_duration": "00:01:00",
+            "time_to_keep_days": 1
+        },
+        "timeout": 600,
+        "debug": true
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "concat_videos": {
+        "enabled": true,
+        "pipeline": {
+            "source": "splitmuxsrc",
+            "sink": "filesink"
+        },
+        "source": {
+            "location": "/video/camera_1/output*.mp4",
+            "linkable": false
+        },
+        "sink": {
+            "location": "/video/camera_1/merged.mp4"
+        },
+        "debug": true
+    }
+}

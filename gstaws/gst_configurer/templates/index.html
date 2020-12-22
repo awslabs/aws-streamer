@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+   <header>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/aws-sdk/2.278.1/aws-sdk.min.js"></script>
+   </header>
+   <head>
+      <meta charset="utf-8">
+      <title>GStreamer Configurer</title>
+      <link href="http://vjs.zencdn.net/6.2.8/video-js.css" rel="stylesheet">
+      <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet">
+      <style>
+         .form-group {
+            margin-right: 30px;
+         }
+
+         body {
+            font-family: Arial;
+            margin: 30px;
+         }
+
+         .editor {
+            background: #eee;
+            min-height: 500px;
+         }
+
+         #left-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: calc(50% - 30px);
+            margin: 30px;
+         }
+
+         #right-panel {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: calc(50% - 30px);
+            margin: 30px;
+         }
+
+         #player {
+            position: relative;
+            top: 100;
+            left: 0;
+            min-height: 300px;
+            height: 50%;
+            width: -webkit-calc(100% - 30px);
+            width:    -moz-calc(100% - 30px);
+            width:         calc(100% - 30px);
+         }
+      </style>
+   </head>
+   <body>
+      <div id="left-panel">
+         <h1 id="header1">Configuration</h1>
+
+         <div class="form-group">
+            <input type="radio" name="backend" id="backend_gg" value="greengrass" onclick="setGreengrassUI()" >  Greengrass &nbsp; </input>
+            <input type="radio" name="backend" id="backend_serverless" value="serverless" onclick="setServerlessUI()" checked>  Serverless  </input>
+         </div>
+
+         <div class="form-group">
+            <label id="group_or_queue_name_label">SQS Queue Name</label>
+            <input id="group_or_queue_name" type="text" class="form-control form-control-sm" placeholder="test_queue"/>
+         </div>
+         <div class="form-group">
+            <label>API Gateway</label>
+            <input id="input_api_gateway" type="text" class="form-control form-control-sm" placeholder="https://b0v5c107b2.execute-api.us-west-2.amazonaws.com/Prod/streaming"/>
+         </div>
+         <div class="form-group">
+            <label id="input_bucket_name_label">ECS Task ARN</label>
+            <input id="bucket_or_task" type="text" class="form-control form-control-sm" placeholder=""/>
+         </div>
+         <script>
+            function setGreengrassUI() {
+               var input = document.getElementById("group_or_queue_name");
+               input.placeholder = "Streamer-GG-Stack";
+               var input = document.getElementById("input_api_gateway");
+               input.placeholder = "https://dyx4xqjyr7.execute-api.ap-southeast-1.amazonaws.com/Test";
+               var input = document.getElementById("group_or_queue_name_label");
+               input.innerHTML = "Greengrass Group Name";
+               var input = document.getElementById("input_bucket_name_label");
+               input.innerHTML = "S3 Bucket";
+            }
+
+            function setServerlessUI() {
+               var input = document.getElementById("group_or_queue_name");
+               input.placeholder = "test_queue";
+               var input = document.getElementById("input_api_gateway");
+               input.placeholder = "https://b0v5c107b2.execute-api.us-west-2.amazonaws.com/Prod/streaming";
+               var input = document.getElementById("group_or_queue_name_label");
+               input.innerHTML = "SQS Queue Name";
+               var input = document.getElementById("input_bucket_name_label");
+               input.innerHTML = "ECS Task ARN";
+            }
+
+            var backend = document.querySelector('input[name="backend"]:checked').value;
+            if (backend === "serverless") {
+               setServerlessUI();
+            } else {
+               setGreengrassUI();
+            }
+
+            var group_or_queue_name = '{{thingName}}';
+            if (group_or_queue_name != null && group_or_queue_name != "") {
+               document.getElementById('group_or_queue_name').placeholder = group_or_queue_name;
+            }
+            var api_gateway = '{{apiGatewayUrl}}';
+            if (api_gateway != null && api_gateway != "") {
+               document.getElementById('input_api_gateway').placeholder = api_gateway;
+            }
+            var bucket = '{{videoBucketPath}}';
+            if (bucket != null && bucket != "") {
+               document.getElementById('bucket_or_task').placeholder = bucket;
+            }
+         </script>
+
+         <div class="form-group">
+            <label>Templates</label>
+            <select id="select_config" name="select_config" class="form-control form-control-sm">
+                 <optgroup label="Configs">
+                     <option value="./new_config.json">-- New Config --</option>
+                     {% for key, value in configs["configs"].items() %}
+                     <option value="{{ value }}">{{ key }}</option>
+                     {% endfor %}
+                 </optgroup>
+                 <optgroup label="Requests">
+                   <option  value="./new_request.json">-- New Request --</option>
+                     {% for key, value in configs["requests"].items() %}
+                     <option value="{{ value }}">{{ key }}</option>
+                     {% endfor %}
+                 </optgroup>
+               </optgroup>
+            </select>
+         </div>
+         <script>
+            function setSelectBoxByText(eid, etxt) {
+               var eid = document.getElementById(eid);
+               for (var i = 0; i < eid.options.length; ++i) {
+                  if (eid.options[i].text === etxt)
+                        eid.options[i].selected = true;
+               }
+            }
+            var backend = document.querySelector('input[name="backend"]:checked').value;
+            if (backend === "serverless") {
+               setSelectBoxByText("select_config", "ecs_task.json");
+            } else {
+               setSelectBoxByText("select_config", "-- New Request --");
+            }
+         </script>
+
+         <div class="form-group">
+            <div id='publish'>
+               <button class='button btn btn-primary'>Publish</button>
+            </div>
+         </div>
+
+         <div class="form-group">
+            <div id="editor" class="editor"></div>
+         </div>
+         <script src="https://ajaxorg.github.io/ace-builds/src/ace.js" ></script>
+         <script>
+            const editor = ace.edit("editor");
+            editor.setTheme("ace/theme/textmate");
+            editor.getSession().setMode("ace/mode/json");
+         </script>
+         <script>
+            $('#select_config').change(function(){
+               var filepath = $(this).val();
+               $.ajax({
+                  url: "/load_config",
+                  type: "GET",
+                  data: {filepath: filepath},
+                  success: function(response) {
+                     var text = response.result.toString();
+                     editor.setValue(text, 1);
+                     var obj = document.getElementById('select_config');
+                     var label = $(obj.options[obj.selectedIndex]).closest('optgroup').prop('label');
+                     if (label === "Configs" && Object.keys(JSON.parse(text)).length > 1) {
+                        editor.getSession().foldAll(1, editor.getSession().doc.getLength(), 2);
+                     }
+                  },
+               });
+            })
+            $(document).ready(function() {
+               $('#select_config').trigger('change');
+            });
+         </script>
+         <script>
+            var options = {
+               accessKeyId: '{{accessKeyId}}',
+               secretAccessKey: '{{secretAccessKey}}',
+               sessionToken: undefined,
+               region: "{{awsRegion}}",
+               endpoint: undefined
+            }
+            var kvs = new AWS.KinesisVideo(options);
+            var kinesisVideoArchivedContent = new AWS.KinesisVideoArchivedMedia(options);
+
+            function update_response(text) {
+               // Update response text
+               var newResponse = JSON.parse(text);
+               var newResponseText = JSON.stringify(newResponse, undefined, 4);
+               var responseText = document.getElementById('responseText');
+               var previousResponse = responseText.innerHTML;
+               if (newResponseText.localeCompare(previousResponse) != 0) {
+                  responseText.innerHTML = newResponseText;
+               }
+
+               // Update task ARN
+               if ("TaskArn" in newResponse) {
+                  console.log(newResponse.TaskArn);
+                  document.getElementById('bucket_or_task').value = newResponse.TaskArn;
+               }
+
+               // Update pipelines dropdown
+               if (!("request" in newResponse) && !("MD5OfMessageBody" in newResponse)) {
+                  var $select = $('#pipelines');
+                  var selectedIndex = document.getElementById('pipelines').selectedIndex;
+                  $select.find('option').remove();
+                  var counter = 0;
+                  $.each(newResponse, function(key, value) {
+                     var preview = false;
+                     if ("sink" in value) {
+                        if ("playlist-location" in value.sink) {
+                           $select.append('<option value=' + value.sink["playlist-location"] + '>' + key + ' (preview)</option>');
+                           preview = true;
+                        } else if ("stream-name" in value.sink) {
+                           console.log('Fetching data endpoint');
+                           console.log(value.sink["stream-name"]);
+                           kvs.getDataEndpoint({
+                              StreamName: value.sink["stream-name"],
+                              APIName: "GET_HLS_STREAMING_SESSION_URL"
+                              }, function(err, response) {
+                                 if (err) { return console.error(err); }
+                                 console.log('Data endpoint: ' + response.DataEndpoint);
+                                 kinesisVideoArchivedContent.endpoint = new AWS.Endpoint(response.DataEndpoint);
+
+                                 kinesisVideoArchivedContent.getHLSStreamingSessionURL({
+                                       StreamName: value.sink["stream-name"],
+                                       PlaybackMode: "LIVE",
+                                       HLSFragmentSelector: {
+                                          FragmentSelectorType: "SERVER_TIMESTAMP",
+                                          TimestampRange: undefined
+                                       },
+                                       DiscontinuityMode: "ALWAYS",
+                                       MaxMediaPlaylistFragmentResults: 10,
+                                       Expires: 3600
+                                    }, function(err, response) {
+                                       if (err) { return console.error(err); }
+                                       console.log('HLS Streaming Session URL: ' + response.HLSStreamingSessionURL);
+                                       $select.append('<option value=' + response.HLSStreamingSessionURL + '>' + key + ' (KVS)</option>');
+                                       preview = true;
+                                 });
+                              }
+                           );
+                        }
+                     }
+                     if (!preview) {
+                        $select.append('<option value="">' + key + '</option>');
+                     }
+                     ++counter;
+                  });
+                  document.getElementById('pipelines').selectedIndex = selectedIndex;
+               }
+            }
+            function publish(message) {
+               var backend = document.querySelector('input[name="backend"]:checked').value;
+               var obj = document.getElementById('select_config');
+               var label = $(obj.options[obj.selectedIndex]).closest('optgroup').prop('label');
+               if ($('#input_api_gateway').val() == '') {
+                     var url = $('#input_api_gateway').attr('placeholder');
+               } else {
+                  var url = $('#input_api_gateway').val();
+               }
+               if ($('#group_or_queue_name').val() == '') {
+                     var group_or_queue = $('#group_or_queue_name').attr('placeholder');
+               } else {
+                  var group_or_queue = $('#group_or_queue_name').val();
+               }
+               if ($('#bucket_or_task').val() == '') {
+                     var bucket = $('#bucket_or_task').attr('placeholder');
+               } else {
+                  var bucket = $('#bucket_or_task').val();
+               }
+               $.ajax({
+                  url: "/publish_message",
+                  type: "GET",
+                  data: {backend: backend, message:message, label: label, url: url, group_or_queue: group_or_queue, bucket: bucket},
+                  success: function(response) {
+                     update_response(response.result.toString());
+                  },
+               });
+            }
+            $(document).ready(function() {
+               $('#publish').on('click', '.button', function(){
+                  const code = editor.getValue();
+                  publish(code);
+               });
+
+               // Update status every 3 seconds
+               setInterval(function() {
+                  var backend = document.querySelector('input[name="backend"]:checked').value;
+                  if ($('#bucket_or_task').val() == '') {
+                     var bucket = $('#bucket_or_task').attr('placeholder');
+                  } else {
+                     var bucket = $('#bucket_or_task').val();
+                  }
+                  if ($('#group_or_queue_name').val() == '') {
+                     var group_or_queue = $('#group_or_queue_name').attr('placeholder');
+                  } else {
+                     var group_or_queue = $('#group_or_queue_name').val();
+                  }
+                  $.ajax({
+                     url: "/get_response",
+                     type: "GET",
+                     data: {backend: backend, bucket: bucket, group_or_queue: group_or_queue},
+                     success: function(response) {
+                        if (response.result) {
+                           update_response(response.result.toString());
+                        }
+                     },
+                  });
+               }, 1000 * 3);
+
+               // This will get the status at the startup
+               publish('{}');
+            });
+         </script>
+      </div>
+
+      <div id="right-panel">
+         <h1 id="header1">Preview</h1>
+         <div class="form-group">
+            <label for="pipelines">Pipelines</label>
+            <select name="pipelines" id="pipelines" class="form-control form-control-sm">
+            </select>
+         </div>
+         <video id="player" class="video-js vjs-default-skin" controls preload="none"></video>
+         <h3 style="margin-top: 20px;">Response</h3>
+         <div class="card bg-light mb-3">
+               <pre id="response" class="card-body text-monospace" style="font-family: monospace; white-space: pre-wrap;"><div class='result'><pre id="responseText"></pre></div></pre>
+         </div>
+         <script src="http://vjs.zencdn.net/6.2.8/video.js"></script>
+         <script src="https://cdnjs.cloudflare.com/ajax/libs/videojs-contrib-hls/5.12.2/videojs-contrib-hls.min.js"></script>
+         <script>
+            var player = videojs('player');
+         </script>
+         <script>
+            $('#pipelines').change(function() {
+               var video_path = $(this).val();
+               if (video_path !== "") {
+                  player.pause();
+                  player.src({type: "application/x-mpegURL", src: video_path});
+                  player.load();
+                  player.play();
+                  console.log(video_path);
+               }
+            });
+         </script>
+      </div>
+   </body>
+</html>
