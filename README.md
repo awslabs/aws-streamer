@@ -101,7 +101,6 @@ List of features provided by this library:
 | ------------------- | --------------------------------- | ------------- |
 | -DBUILD_KVS         | Build KVS GStreamer plug-in       | OFF           |
 | -DBUILD_KVS_WEBRTC  | Build KVS WebRTC binaries         | OFF           |
-| -DBUILD_S3          | Build S3 GStreamer plug-in        | OFF           |
 | -BUILD_NEO_DLR      | Build SageMaker NEO runtime       | OFF           |
 | -BUILD_MXNET        | Build MXnet GStreamer plug-in     | OFF           |
 

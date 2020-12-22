@@ -10,7 +10,6 @@ project(awstreamer)
 option(BUILD_METADATA "Build custom GStreamer metadata" ON)
 option(BUILD_KVS "Build KVS GStreamer plug-in" OFF)
 option(BUILD_KVS_WEBRTC "Build KVS WebRTC plug-in" OFF)
-option(BUILD_S3 "Build S3 GStreamer plug-in" OFF)
 option(BUILD_CVML "Build CVML filter" OFF)
 option(BUILD_NEO_DLR "Build SageMaker NEO runtime" OFF)
 option(BUILD_MXNET "Build MXnet GStreamer plug-in" OFF)
@@ -40,13 +39,6 @@ if (BUILD_KVS_WEBRTC)
 else ()
   message("-- BUILD_KVS_WEBRTC \t\t= OFF")
 endif (BUILD_KVS_WEBRTC)
-
-if (BUILD_S3)
-  message("-- BUILD_S3 \t\t\t= ON")
-  add_definitions(-DS3_ENABLED)
-else ()
-  message("-- BUILD_S3 \t\t\t= OFF")
-endif (BUILD_S3)
 
 if (BUILD_CVML)
   message("-- BUILD_CVML \t\t\t= ON")
@@ -127,10 +119,6 @@ if (BUILD_KVS_WEBRTC)
   )
 
 endif (BUILD_KVS_WEBRTC)
-
-if (BUILD_S3)
-  message(FATAL_ERROR "S3 sink plug-in has not been implemented yet.")
-endif (BUILD_S3)
 
 if (BUILD_NEO_DLR)
   add_custom_target(NEODLR ALL ${CMAKE_CURRENT_SOURCE_DIR}/gst_plugins/dlr/get_dlr.sh ${CMAKE_BINARY_DIR}
