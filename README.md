@@ -1,6 +1,6 @@
 # AWS Streamer
 
-The AWS Streamer is a collection of video processing and streaming tools for AWS platform. It will enable users to stream from multiple camera sources, process the video stream and upload to the cloud and/or local storage. It can be used standalone, inside AWS Lambda functions, AWS ECS container or running on an AWS IoT Greengrass Core.
+The AWS Streamer is a collection of video processing and streaming tools for AWS platform. It will enable users to stream from multiple camera sources, process the video streams and upload to the cloud and/or local storage. It can be used standalone on the edge device, inside AWS Lambda functions, AWS ECS container or running on an AWS IoT Greengrass as a Lambda.
 
 <p align="center">
   <a href="#key-features">Key Features</a> •
