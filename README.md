@@ -35,12 +35,6 @@ List of features provided by this library:
     - [MacOS](INSTALL.md#macos)
     - [Windows](INSTALL.md#windows)
 
-- Install Python dependencies:
-    ```
-    sudo python3 -m easy_install install pip
-    sudo python3 -m easy_install install virtualenv
-    ```
-
 ### Install
 
 - With pip:
