@@ -27,38 +27,15 @@ List of features provided by this library:
 
 ### Prerequisites
 
-- Python 3.7 or newer.
+- Python 3.7 or newer
 
-    Tip: If your system has by default installed Python 3.6, then do the following:
-    ```
-    sudo ln -s /usr/bin/python3.6 /usr/bin/python3.7
-    ```
-    Installing Python 3.7 on top of 3.6 will break all hell loose, don't do that :)
+- Install OS packages:
 
-- Install GStreamer dependencies:
-    ```
-    sudo apt-get update
-    sudo apt-get install \
-        python3-dev \
-        python3-gi \
-        libgirepository1.0-dev \
-        gstreamer1.0-tools \
-        gir1.2-gstreamer-1.0 \
-        gir1.2-gst-plugins-base-1.0 \
-        libgstreamer1.0-dev \
-        gstreamer1.0-plugins-base \
-        gstreamer1.0-plugins-good \
-        pkg-config \
-        build-essential \
-        libcairo2-dev \
-        libpango1.0-dev \
-        libjpeg-dev \
-        libgif-dev \
-        librsvg2-dev \
-        cmake
-    ```
+    - [Ubuntu](INSTALL.md#ubuntu)
+    - [MacOS](INSTALL.md#macos)
+    - [Windows](INSTALL.md#windows)
 
-- Install Python dependencies
+- Install Python dependencies:
     ```
     sudo python3 -m easy_install install pip
     sudo python3 -m easy_install install virtualenv
