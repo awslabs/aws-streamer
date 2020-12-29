@@ -89,6 +89,8 @@ class StreamClient():
             lib_gst_path = None
             if sys.platform == "darwin":
                 lib_gst_path = "/usr/local/Cellar/gstreamer/{}.{}.{}/lib/libgstreamer-1.0.dylib".format(*Gst.version())
+            elif sys.platform == "win32":
+                lib_gst_path = "C:\\msys64\\mingw64\\bin\\libgstreamer-1.0-0.dll"
             else:
                 lib_gst_paths = [
                     "/usr/lib/aarch64-linux-gnu/libgstreamer-1.0.so.0",

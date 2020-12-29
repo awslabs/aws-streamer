@@ -16,6 +16,12 @@ if (APPLE)
   set(BUILD_METADATA OFF)
 endif (APPLE)
 
+execute_process(COMMAND uname OUTPUT_VARIABLE uname)
+if (uname MATCHES "^MINGW")
+  message("-- MINGW \t\t\t= ON")
+  set(BUILD_METADATA OFF)
+endif ()
+
 add_subdirectory(${SRC_DIR})
 
 # Package all files into a separate directory

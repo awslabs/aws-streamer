@@ -20,6 +20,12 @@ if (APPLE)
   set(BUILD_METADATA OFF)
 endif (APPLE)
 
+execute_process(COMMAND uname OUTPUT_VARIABLE uname)
+if (uname MATCHES "^MINGW")
+  message("-- MINGW \t\t\t= ON")
+  set(BUILD_METADATA OFF)
+endif ()
+
 if (BUILD_METADATA)
   message("-- BUILD_METADATA \t\t= ON")
 else ()

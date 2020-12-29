@@ -1,9 +1,9 @@
 #!/bin/bash
 
-'''
-Example:
-  ./build.sh -DBUILD_KVS=ON
-'''
+# '''
+# Example:
+#  ./build.sh -DBUILD_KVS=ON
+# '''
 
 full_path=$(realpath $0)
 dir_path=$(dirname $full_path)/
