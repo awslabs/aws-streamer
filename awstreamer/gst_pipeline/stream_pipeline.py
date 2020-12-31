@@ -51,14 +51,23 @@ class StreamPipeline(object):
         self.auto_configure(self.config)
         self.compile(self.config)
 
+    def get(self, name):
+        '''
+        Returns pipeline element with a given name
+        '''
+        if self.graph.contains(name):
+            return self.pipeline.get_by_name(name)
+        return None
+
     def build(self, config):
         '''
         Virtual method, it can be overriden by a child
         '''
         # If python plugins are in pipeline, do parse_launch instead
-        python_plugins = get_python_plugins_list()
+        plugins_requiring_parse_launch = get_python_plugins_list()
+        plugins_requiring_parse_launch += ["appsrc"]
         for k,v in config["pipeline"].items():
-            if v in python_plugins:
+            if v in plugins_requiring_parse_launch:
                 self.graph.parse_launch = True
                 break
 
@@ -95,6 +104,7 @@ class StreamPipeline(object):
 
         if self.graph.parse_launch:
             gst_launch_str = self.graph.get_gst_launch_str(config, parse_launch=True)
+            logger.info("Calling parse_launch...")
             self.pipeline = Gst.parse_launch(gst_launch_str)
         else:
             self.pipeline = Gst.Pipeline()
@@ -199,31 +209,35 @@ class StreamPipeline(object):
         logger.info("Lights out!")
         pipeline.send_event(Gst.Event.new_eos())
 
-    def start(self):
+    def start(self, loop=None):
         '''
         Sets pipeline to the playing state
         '''
-        logger.info("Starting %s..." % self.__class__.__name__)
+        logger.info("Starting %s (%s)..." % (self.__class__.__name__, self.config["id"]))
         bus = self.pipeline.get_bus()
-        bus.add_watch(0, self.on_message, (self.pipeline, self.loop))
+        bus.add_watch(0, self.on_message, (self.pipeline, self.loop if loop is None else loop))
 
-        # Set pipeline state to playing and check
+        # Set pipeline state to playing
         self.pipeline.set_state(Gst.State.PLAYING)
-        logger.info(self.pipeline.get_state(Gst.CLOCK_TIME_NONE))
-        if self.pipeline.get_state(Gst.CLOCK_TIME_NONE)[0] != Gst.StateChangeReturn.SUCCESS:
-            logger.error("Failed to set the pipeline to the playing state")
-            return
+
+        # Check the state
+        if not self.graph.contains_plugin(["appsrc", "appsink"]):
+            logger.info(self.pipeline.get_state(Gst.CLOCK_TIME_NONE))
+            if self.pipeline.get_state(Gst.CLOCK_TIME_NONE)[0] != Gst.StateChangeReturn.SUCCESS:
+                logger.error("Failed to set the pipeline to the playing state")
+                return
 
         # Create timer for end of stream
         if self.config.isSet("timeout"):
             delay = datetime.timedelta(seconds=self.config.get("timeout")).total_seconds()
             Timer(delay, self.send_eos, args=(self.pipeline,)).start()
 
-        # Start the main loop, blocking call
-        self.loop.run()
+        if loop is None:
+            # Start the main loop, blocking call
+            self.loop.run()
 
-        # This will be called after main loop has ended
-        self.pipeline.set_state(Gst.State.NULL)
+            # This will be called after main loop has ended
+            self.pipeline.set_state(Gst.State.NULL)
 
     def stop(self):
         '''

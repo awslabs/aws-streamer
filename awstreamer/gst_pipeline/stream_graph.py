@@ -31,13 +31,16 @@ class StreamGraph():
     def register_callback(self, name, callback):
         self.callbacks[name] = callback
 
-    def add(self, factory_name, name):
+    def add(self, factory_name, name, throw=True):
         if self.parse_launch:
             elem = None
         else:
             elem = Gst.ElementFactory.make(factory_name, name)
             if elem is None:
-                logger.error("Failed to make element %s of type %s" % (name, factory_name))
+                msg = "Failed to make element %s of type %s" % (name, factory_name)
+                logger.error(msg)
+                if throw:
+                    raise Exception(msg)
                 return
         self.vmap[name] = Vertex(name, factory_name, elem)
 
@@ -76,21 +79,30 @@ class StreamGraph():
         '''
         Compiles the graph to the pipeline: adds elements from the graph and links them
         '''
-        prev = None
-        graph_str = ""
+        # Add elements
         for k,v in self.items():
             if not v.enabled:
                 logger.info("Disabled: %s" % k)
                 continue
             logger.info("Adding: %s" % k)
             pipeline.add(v.elem)
+
+        # Link elements
+        prev = None
+        graph_str = ""
+        for k,v in self.items():
+            if not v.enabled:
+                continue
             if prev is not None:
                 if prev.linkable is None:
                     logger.info("Not linking plugin '%s'. Do so manually." % prev.name)
-                    graph_str += " -/-> "
+                    graph_str += " \n\t%s-> " % u'\u2514'
                 elif prev.linkable:
                     prev.elem.link(v.elem)
                     graph_str += " --> "
+                    if isinstance(prev.linkable, str):
+                        prev.elem.link(self[prev.linkable])
+                        graph_str += " \n\t%s-> " % u'\u2514'
                 else:
                     logger.info("Plugin '%s' will be linked to '%s' on new pad added." % (prev.name, k))
                     prev.elem.connect("pad-added", self.callbacks["on_pad_added"], v.elem)
@@ -138,15 +150,16 @@ class StreamGraph():
             # Set plug-in properties
             if plugin is not None:
                 props = plugin.list_properties()
-                logger.info(props)
                 for p in props:
                     if p.name == "name":
                         continue
                     if p.name in config_params:
                         logger.info("Setting property '%s' for plugin '%s' to a value: %s" % (p.name, k, v[p.name]))
                         if p.name == "caps" and isinstance(v[p.name], str):
-                            v[p.name] = Gst.caps_from_string(v[p.name])
-                        plugin.set_property(p.name, v[p.name])
+                            caps = Gst.caps_from_string(v[p.name])
+                            plugin.set_property(p.name, caps)
+                        else:
+                            plugin.set_property(p.name, v[p.name])
 
     def get_gst_launch_str(self, config=dict(), parse_launch=False):
         '''
@@ -154,6 +167,7 @@ class StreamGraph():
         '''
         gst_launch_str = ""
         first = True
+        tee = None
         for k,v in self.items():
             if not v.enabled:
                 continue
@@ -184,6 +198,9 @@ class StreamGraph():
                 props = plugin.list_properties()
                 for p in props:
                     if p.name == "name":
+                        if v.factory_name == "tee":
+                            tee = plugin.get_property(p.name)
+                            gst_launch_str += " name=" + tee
                         continue
                     if p.name in config_params:
                         prefix = " "
@@ -191,6 +208,9 @@ class StreamGraph():
                             prefix += p.name + "="
                         decorator = "'" if not parse_launch and p.name == "caps" else ""
                         gst_launch_str += prefix + decorator + str(config_params[p.name]) + decorator
+
+            if v.linkable is None and tee is not None:
+                gst_launch_str += " %s." % tee
 
         return gst_launch_str.strip()
 

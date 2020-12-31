@@ -59,6 +59,7 @@ class StreamClient():
         self.futures = dict()
         self.set_env_variables()
         self.config = dict()
+        self.pipelines = dict()
 
     def set_env_variables(self):
         '''
@@ -122,23 +123,75 @@ class StreamClient():
         else:
             return config_or_filename
 
-    def start(self, config_or_filename=None, key=None):
+    def get_pipeline(self, name):
         '''
-        Start single pipeline synchronously
+        Returns pipeline with a given name
+        '''
+        if name in self.pipelines:
+            return self.pipelines[name]
+        return None
+
+    def add(self, config_or_filename=None):
+        '''
+        Build pipeline and add to the registry
         '''
         # Get config in the proper format
         config = self.get_config(config_or_filename)
 
-        # Flatten the config
-        if config is not None and len(config.keys()) == 1:
-            key = list(config.keys())[0]
-            config = config[key]
+        # Add default id if config is flat
+        if config is not None and "pipeline" in config:
+            key = "default_%d" % len(self.pipelines.keys())
+            config = { key: config }
 
-        # Start the pipeline
-        future = self.pool.schedule(stream_pipeline, args=[key, config])
-        future.result()
+        for key in config:
+            # Skip those sources that are disabled in configuration
+            if "enabled" in config[key] and not config[key]["enabled"]:
+                logger.info("Skipping %s (disabled)" % key)
+                continue
 
-        return config
+            # Parse config
+            config[key]["id"] = key
+            pipeline_config = StreamConfig(config[key])
+            logger.info(pformat(pipeline_config))
+
+            # Create pipeline
+            pipeline = PipelineFactory.createPipeline(pipeline_config)
+            self.pipelines[key] = pipeline
+
+        if len(self.pipelines.keys()) == 1:
+            return tuple(self.pipelines.values())[0]
+
+        return tuple(self.pipelines.values())
+
+    def run(self, loop=None):
+        '''
+        Run pipelines that have been added with add()
+        '''
+        if len(self.pipelines.keys()) == 0:
+            logger.error("No pipelines added")
+            return
+
+        # Main application loop
+        if loop is None:
+            loop = GLib.MainLoop()
+
+        # Start each pipeline
+        for k,v in self.pipelines.items():
+            v.start(loop)
+
+        # Run the main loop
+        loop.run()
+
+        # Cleanup when main loop has ended
+        for k,v in self.pipelines.items():
+            v.stop()
+
+    def start(self, config_or_filename=None):
+        '''
+        Start single pipeline synchronously
+        '''
+        self.add(config_or_filename)
+        self.run()
 
     def stop(self):
         self.pool.stop()

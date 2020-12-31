@@ -22,6 +22,9 @@
         gstreamer1.0-tools \
         gstreamer1.0-plugins-base \
         gstreamer1.0-plugins-good \
+        gstreamer1.0-plugins-bad \
+        gstreamer1.0-plugins-ugly \
+        gstreamer1.0-python3-plugin-loader \
         libgirepository1.0-dev \
         libgstreamer1.0-dev \
         libcairo2-dev \
