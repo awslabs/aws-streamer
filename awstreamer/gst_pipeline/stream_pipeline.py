@@ -63,9 +63,18 @@ class StreamPipeline(object):
                 break
 
         # Build pipeline from dict
-        for k,v in config["pipeline"].items():
-            logger.info("%s: %s" % (k,v))
-            self.graph.add(v, k)
+        if isinstance(config["pipeline"], dict):
+            for k,v in config["pipeline"].items():
+                logger.info("%s: %s" % (k,v))
+                self.graph.add(v, k)
+        elif isinstance(config["pipeline"], list):
+            for i in range(len(config["pipeline"])):
+                d = config["pipeline"][i]
+                for k,v in d.items():
+                    logger.info("%s: %s" % (k,v))
+                    self.graphs[i].add(v, k)
+        else:
+            logger.error("Pipeline should be a dictionary or list of dictionaries!")
 
     def configure(self, config):
         '''
@@ -199,13 +208,13 @@ class StreamPipeline(object):
         logger.info("Lights out!")
         pipeline.send_event(Gst.Event.new_eos())
 
-    def start(self):
+    def start(self, loop=None):
         '''
         Sets pipeline to the playing state
         '''
         logger.info("Starting %s..." % self.__class__.__name__)
         bus = self.pipeline.get_bus()
-        bus.add_watch(0, self.on_message, (self.pipeline, self.loop))
+        bus.add_watch(0, self.on_message, (self.pipeline, self.loop if loop is None else loop))
 
         # Set pipeline state to playing and check
         self.pipeline.set_state(Gst.State.PLAYING)
@@ -219,11 +228,12 @@ class StreamPipeline(object):
             delay = datetime.timedelta(seconds=self.config.get("timeout")).total_seconds()
             Timer(delay, self.send_eos, args=(self.pipeline,)).start()
 
-        # Start the main loop, blocking call
-        self.loop.run()
+        if loop is None:
+            # Start the main loop, blocking call
+            self.loop.run()
 
-        # This will be called after main loop has ended
-        self.pipeline.set_state(Gst.State.NULL)
+            # This will be called after main loop has ended
+            self.pipeline.set_state(Gst.State.NULL)
 
     def stop(self):
         '''

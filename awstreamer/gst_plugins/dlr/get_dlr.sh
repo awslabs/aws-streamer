@@ -5,7 +5,7 @@ if [ ! -d neo-ai-dlr ]; then
 fi
 
 if [ ! -d neo-ai-dlr/build ]; then
-    source venv/bin/activate
+    # source venv/bin/activate
     cd neo-ai-dlr
         mkdir build
         cd build
@@ -13,11 +13,5 @@ if [ ! -d neo-ai-dlr/build ]; then
             cmake ..
             make -j4
         cd ../python
-            python setup.py install
-
-            # This hacky thing is needed to get DLR working...
-            pip uninstall -y numpy
-            pip uninstall -y setuptools
-            pip install setuptools
-            pip install numpy
+            sudo python3 setup.py install --user
 fi

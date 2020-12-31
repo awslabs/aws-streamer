@@ -36,30 +36,34 @@ class VideoRecorderPipeline(StreamPipeline):
         VideoPipeline.configure_source(self.graph, config)
 
         # Configure video segment size
-        segment_duration = config.get("sink.segment_duration")
-        segment_duration = segment_duration.split(':')
-        segment_duration_hour = int(segment_duration[0])
-        segment_duration_min = int(segment_duration[1])
-        segment_duration_sec = int(segment_duration[2])
-        segment_duration_total_sec = segment_duration_sec + 60 * (segment_duration_min + 60 * segment_duration_hour)
-        logger.info("segment_duration_total_sec: %d" % segment_duration_total_sec)
-        segment_duration_total_ns = 1000000000 * segment_duration_total_sec
-        self.graph["sink"].set_property("max-size-time", segment_duration_total_ns)
+        if config.isSet("sink.segment_duration"):
+            segment_duration = config.get("sink.segment_duration")
+            segment_duration = segment_duration.split(':')
+            segment_duration_hour = int(segment_duration[0])
+            segment_duration_min = int(segment_duration[1])
+            segment_duration_sec = int(segment_duration[2])
+            segment_duration_total_sec = segment_duration_sec + 60 * (segment_duration_min + 60 * segment_duration_hour)
+            logger.info("segment_duration_total_sec: %d" % segment_duration_total_sec)
+            segment_duration_total_ns = 1000000000 * segment_duration_total_sec
+            self.graph["sink"].set_property("max-size-time", segment_duration_total_ns)
 
         # Configure time-to-live for a video segment
-        time_to_keep_days = config.get("sink.time_to_keep_days")
-        time_to_keep_sec = time_to_keep_days * 24 * 60 * 60
-        max_files = int(float(time_to_keep_sec) / float(segment_duration_total_sec))
-        logger.info("time_to_keep_sec: %d" % time_to_keep_sec)
-        logger.info("max_files: %d" % max_files)
-        self.graph["sink"].set_property("max-files", max_files)
+        if config.isSet("sink.time_to_keep_days"):
+            time_to_keep_days = config.get("sink.time_to_keep_days")
+            time_to_keep_sec = time_to_keep_days * 24 * 60 * 60
+            max_files = int(float(time_to_keep_sec) / float(segment_duration_total_sec))
+            logger.info("time_to_keep_sec: %d" % time_to_keep_sec)
+            logger.info("max_files: %d" % max_files)
+            self.graph["sink"].set_property("max-files", max_files)
 
         # Configure muxer
-        mux = Gst.ElementFactory.make("qtmux", "mux")
-        mux.set_property("faststart", True)
-        self.graph["sink"].set_property("muxer", mux)
+        if not config.isSet("sink.muxer-factory"):
+            mux = Gst.ElementFactory.make("qtmux", "mux")
+            mux.set_property("faststart", True)
+            self.graph["sink"].set_property("muxer", mux)
 
         # Create desitnation folder
         dest_dir = os.path.dirname(config.get("sink.location"))
-        logger.info("Destination directory: %s" % dest_dir)
-        os.makedirs(dest_dir, mode=0o777, exist_ok=True)
+        if dest_dir.strip() != "":
+            logger.info("Destination directory: %s" % dest_dir)
+            os.makedirs(dest_dir, mode=0o777, exist_ok=True)

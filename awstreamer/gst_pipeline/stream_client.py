@@ -59,6 +59,7 @@ class StreamClient():
         self.futures = dict()
         self.set_env_variables()
         self.config = dict()
+        self.pipelines = dict()
 
     def set_env_variables(self):
         '''
@@ -122,6 +123,14 @@ class StreamClient():
         else:
             return config_or_filename
 
+    def get_pipelines(self, name):
+        '''
+        Returns pipeline with a given name
+        '''
+        if name in self.pipelines:
+            return self.pipelines[name]
+        return None
+
     def start(self, config_or_filename=None, key=None):
         '''
         Start single pipeline synchronously
@@ -129,14 +138,46 @@ class StreamClient():
         # Get config in the proper format
         config = self.get_config(config_or_filename)
 
-        # Flatten the config
-        if config is not None and len(config.keys()) == 1:
-            key = list(config.keys())[0]
-            config = config[key]
+        # Add default id if config is flat
+        if config is not None and "pipeline" in config:
+            config = { "default": config }
 
-        # Start the pipeline
-        future = self.pool.schedule(stream_pipeline, args=[key, config])
-        future.result()
+        # Main application loop
+        loop = GLib.MainLoop()
+
+        for key in config:
+            # Skip those sources that are disabled in configuration
+            if "enabled" in config[key] and not config[key]["enabled"]:
+                logger.info("Skipping %s (disabled)" % key)
+                continue
+
+            # Parse config
+            config[key]["id"] = key
+            pipeline_config = StreamConfig(config[key])
+            logger.info(pformat(pipeline_config))
+
+            # Get pipeline
+            pipeline = PipelineFactory.createPipeline(pipeline_config)
+            self.pipelines[key] = pipeline
+
+            # Start pipeline
+            pipeline.start(loop)
+
+        # Start the main loop, blocking call
+        loop.run()
+
+        # Cleanup when main loop has ended
+        for key in config:
+            self.pipelines[key].stop()
+
+        # # Flatten the config
+        # if config is not None and len(config.keys()) == 1:
+        #     key = list(config.keys())[0]
+        #     config = config[key]
+
+        # # Start the pipeline
+        # future = self.pool.schedule(stream_pipeline, args=[key, config])
+        # future.result()
 
         return config
 

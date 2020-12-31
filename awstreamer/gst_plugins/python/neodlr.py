@@ -12,7 +12,10 @@
         neodlr ! osd ! videoconvert ! fpsdisplaysink sync=false
 """
 
+from dlr.counter.phone_home import PhoneHome
+PhoneHome.disable_feature()
 from dlr import DLRModel
+
 import logging
 import timeit
 import traceback
@@ -117,23 +120,29 @@ class GstNeoDLR(GstBase.BaseTransform):
         else:
             raise AttributeError('unknown property %s' % prop.name)
 
+    def load_model(self):
+        if self.model is not None:
+            return
+        if self.model_dir == "":
+            return
+        if os.path.exists(self.model_dir):
+            # Load model
+            print("Loading model from %s..." % self.model_dir)
+            self.model = DLRModel(self.model_dir, self.device_type)
+            print("Done.")
+
+            print ("Warming up DLR engine...")
+            start_time = time.time()
+            x = np.random.rand(1, 3, self.image_size, self.image_size)
+            result = self.model.run(x)
+            print(len(result))
+            print(result[0].shape)
+            print('inference time is ' + str((time.time()-start_time)) + ' seconds')
+            print ("Done.")
+
     def do_set_property(self, prop: GObject.GParamSpec, value):
         if prop.name == 'model-dir':
             self.model_dir = value
-            if self.model_dir != "" and os.path.exists(self.model_dir):
-                # Load model
-                print("Loading model from %s..." % self.model_dir)
-                self.model = DLRModel(self.model_dir, self.device_type)
-                print("Done.")
-
-                print ("Warming up DLR engine...")
-                start_time = time.time()
-                x = np.random.rand(1, 3, 320, 320)
-                result = self.model.run(x)
-                print(len(result))
-                print(result[0].shape)
-                print('inference time is ' + str((time.time()-start_time)) + ' seconds')
-                print ("Done.")
         elif prop.name == 'device-type':
             self.device_type = value
         elif prop.name == 'image-size':
@@ -145,6 +154,11 @@ class GstNeoDLR(GstBase.BaseTransform):
 
     def do_transform_ip(self, buffer: Gst.Buffer) -> Gst.FlowReturn:
         try:
+            # Load the model
+            if self.model is None:
+                self.load_model()
+
+            # Check if model has been loaded
             if self.model is None:
                 return Gst.FlowReturn.OK
 
