@@ -2,16 +2,16 @@
 
 This greengrass group contains the following lambdas:
 
- - [GStreamer Pipeline](py_gstreamer_pipeline/src/gstreamer_pipeline/README.md)
- - [Data Uploader](py_gstreamer_pipeline/src/data_uploader/README.md)
+ - [GStreamer Pipeline](src/gstreamer_pipeline/README.md)
+ - [Data Uploader](src/data_uploader/README.md)
 
-For more details about the internal configuration, read [this](./README_TECH.md)
+For more details about the internal configuration, read [this](src/README.md)
 
 For information on how to use them from user's perspective, click on each lambda name above.
 
 ## Architecture
 
-![Diagram](./doc/Video_Streaming_Pipeline.png)
+![Diagram](doc/Video_Streaming_CVML_Pipeline.png)
 
 ## Install Greengrass
 
@@ -32,11 +32,7 @@ wget https://www.amazontrust.com/repository/AmazonRootCA1.pem -O /greengrass/cer
 
 The commands below should only be executed on the target platform:
 
-- If you are on Jetson platform (which by default has Python 3.6 installed), then do the following:
-    ```
-    sudo ln -s /usr/bin/python3.6 /usr/bin/python3.7
-    ```
-    Installing Python 3.7 on top of 3.6 will break all hell loose, don't do that :)
+-  Follow AWS Streamer installation instructions
 
 - Install needed python packages for all users:
     ```
@@ -44,20 +40,7 @@ The commands below should only be executed on the target platform:
     cd ~
     curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
     python3 get-pip.py --user
-    pip3 install -r /path/to/this/folder/aws-gst-sdk/requirements.txt
     pip3 install -r /path/to/this/folder/src/requirements.txt
-    ```
-
-- Install GStreamer dependencies:
-    ```
-    sudo apt install cmake python-gi python3-gi \
-        gstreamer1.0-tools \
-        gir1.2-gstreamer-1.0 \
-        gir1.2-gst-plugins-base-1.0 \
-        gstreamer1.0-plugins-good \
-        gstreamer1.0-plugins-ugly \
-        gstreamer1.0-plugins-bad \
-        gstreamer1.0-libav
     ```
 
 - Make sure that video volume exists and is accesible by ggc_user:

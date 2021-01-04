@@ -2,6 +2,10 @@
 
 This repository contains resources for building a demo application that allows using AWS Streamer in the cloud, controlled by Gateway API. Included is a Docker image and serverless AWS CloudFormation templates that you can deploy to your AWS Account. The Walkthrough will show you how to create a container using the Docker image and upload it to Amazon Elastic Container Registry (ECR), which is referenced by a Amazon Elastic Container Service (ECS) task. AWS CloudFormation templates orchestrate resources (including Amazon APIGateway, Amazon Lambda, and Amazon ECS) that run the streaming demo application. When deployed, the startStreaming API will start a new pipeline with a configuration given in a body of the message. The stopStreaming API will stop the ECS task and complete the upload (if any).
 
+## Architecture
+
+![Diagram](doc/Serverless_Video_Streaming_Pipeline.png)
+
 ## Prerequisites
 
 For this walkthrough, you should have the following prerequisites:

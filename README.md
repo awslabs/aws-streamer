@@ -86,7 +86,15 @@ cd examples/test_app
 python3 app.py ../configs/testsrc_display.json
 ```
 
-### Using AWS Streamer
+### Demos
+
+There are two full-blown demos available:
+- [IoT (Greengrass)](examples/greengrass/README.md)
+- [Serverless (Fargate)](examples/serverless/README.md)
+
+Click on links above to read more and see detailed architecture.
+
+### Using AWS Streamer as SDK
 
 ``` python
 import awstreamer
