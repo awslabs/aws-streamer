@@ -5,7 +5,7 @@ This greengrass group contains the following lambdas:
  - [GStreamer Pipeline](src/gstreamer_pipeline/README.md)
  - [Data Uploader](src/data_uploader/README.md)
 
-For more details about the internal configuration, read [this](src/README.md)
+For more details about the internal configuration, read [this](src/README.md).
 
 For information on how to use them from user's perspective, click on each lambda name above.
 
