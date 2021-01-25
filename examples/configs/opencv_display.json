@@ -1,0 +1,25 @@
+{
+    "test_display": {
+        "enabled": true,
+        "pipeline": "cv",
+        "source": {
+            "name": 0,
+            "display": false
+        },
+        "sink": {
+            "pipeline": {
+                "pipeline": "appsrc",
+                "source": {
+                    "width": 320,
+                    "height": 320,
+                    "fps": 30
+                },
+                "sink": {
+                    "name": "autovideosink"
+                }
+            },
+            "display": true
+        },
+        "debug": true
+    }
+}

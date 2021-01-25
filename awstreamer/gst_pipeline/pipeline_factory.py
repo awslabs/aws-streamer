@@ -57,6 +57,7 @@ class PipelineFactory():
             "video": ".video_pipeline.VideoPipeline",
             "deepstream": ".ds_pipeline.DeepStreamPipeline",
             "appsrc": ".appsrc_pipeline.AppSrcPipeline",
+            "cv": ".cv_pipeline.OpenCvPipeline",
             "cmd": ".cmd_pipeline.CommandLinePipeline"
         }
 

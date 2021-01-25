@@ -1,0 +1,28 @@
+{
+    "test_display": {
+        "enabled": true,
+        "pipeline": "cv",
+        "source": {
+            "name": 0,
+            "display": false
+        },
+        "sink": {
+            "pipeline": {
+                "pipeline": "appsrc",
+                "source": {
+                    "width": 320,
+                    "height": 320,
+                    "fps": 30
+                },
+                "sink": {
+                    "name": "hlssink",
+                    "location": "/video/segment%05d.ts",
+                    "playlist-location": "/video/playlist.m3u8",
+                    "max-files": 5
+                }
+            },
+            "display": true
+        },
+        "debug": true
+    }
+}

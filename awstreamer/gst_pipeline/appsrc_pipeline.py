@@ -30,7 +30,8 @@ class AppSrcPipeline(StreamPipeline):
         self.graph.add_pipeline({
             "source": "appsrc",
             "source_filter": "capsfilter",
-            "convert": "videoconvert"
+            "convert": "videoconvert",
+            "queue": "queue"
         })
 
         # Encoder
@@ -53,8 +54,9 @@ class AppSrcPipeline(StreamPipeline):
         self.graph["source"].set_property("format", 3)
 
         # Configure source filter
-        caps_str = 'video/x-raw,format=BGR,width=%d,height=%d,framerate=%d/1,interlace-mode=(string)progressive' \
-            % (config.get("source.width"), config.get("source.height"), config.get("source.fps"))
+        img_format = config.get("source.img_format") if config.isSet("source.img_format") else "BGR"
+        caps_str = 'video/x-raw,format=%s,width=%d,height=%d,framerate=%d/1,interlace-mode=(string)progressive' \
+            % (img_format, config.get("source.width"), config.get("source.height"), config.get("source.fps"))
         config["source_filter"] = { "caps": caps_str }
         source_caps = Gst.caps_from_string(caps_str)
         self.graph["source_filter"].set_property("caps", source_caps)

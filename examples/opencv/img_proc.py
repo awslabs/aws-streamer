@@ -7,42 +7,40 @@ import cv2
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+def process(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    return gray
+
 if __name__ == '__main__':
 
-    # Start an appsrc pipeline asynchronously
     client = awstreamer.client()
-    pipeline, thread = client.start({
-        "pipeline": "appsrc",
-        "source": {
-            "width": 320,
-            "height": 320,
-            "fps": 30
-        },
-        "sink": {
-            "name": "hlssink",
-            "location": "/video/segment%05d.ts",
-            "playlist-location": "/video/playlist.m3u8",
-            "max-files": 5
+
+    client.schedule({
+        "test_display": {
+            "enabled": True,
+            "pipeline": "cv",
+            "source": {
+                "name": 0,
+                "display": False
+            },
+            "process": process,
+            "sink": {
+                "pipeline": {
+                    "pipeline": "appsrc",
+                    "source": {
+                        "width": 320,
+                        "height": 320,
+                        "fps": 30,
+                        "img_format": "GRAY8"
+                    },
+                    "sink": {
+                        "name": "autovideosink"
+                    }
+                },
+                "display": True
+            },
+            "debug": True
         }
-    }, wait_for_finish=False)
+    }, wait_for_finish=True)
 
-    # Video source
-    source = cv2.VideoCapture(0)
-
-    while True:
-        # Capture frame
-        ret, img = source.read()
-        if not ret:
-            logger.error("Can't receive frame (stream end?). Exiting ...")
-            break
-
-        # Push to appsrc
-        img = cv2.resize(img, (320,320))
-        pipeline.push(img)
-
-        # Display
-        cv2.imshow("output", img)
-        cv2.waitKey(1)
-
-    thread.join()
     print("All done.")
