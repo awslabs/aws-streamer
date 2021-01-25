@@ -10,6 +10,7 @@ import argparse
 import logging
 from pprint import pformat
 from pebble import ProcessPool
+from threading import Thread
 
 from .stream_config import StreamConfig
 from .pipeline_factory import PipelineFactory
@@ -186,12 +187,17 @@ class StreamClient():
         for k,v in self.pipelines.items():
             v.stop()
 
-    def start(self, config_or_filename=None):
+    def start(self, config_or_filename=None, wait_for_finish=True):
         '''
-        Start single pipeline synchronously
+        Start single pipeline
         '''
-        self.add(config_or_filename)
-        self.run()
+        pipeline = self.add(config_or_filename)
+        if wait_for_finish:
+            self.run()
+        else:
+            thread = Thread(target=self.run)
+            thread.start()
+            return pipeline, thread
 
     def stop(self):
         self.pool.stop()

@@ -56,6 +56,7 @@ class PipelineFactory():
             "dvr": ".dvr_pipeline.VideoRecorderPipeline",
             "video": ".video_pipeline.VideoPipeline",
             "deepstream": ".ds_pipeline.DeepStreamPipeline",
+            "appsrc": ".appsrc_pipeline.AppSrcPipeline",
             "cmd": ".cmd_pipeline.CommandLinePipeline"
         }
 
