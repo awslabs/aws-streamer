@@ -27,7 +27,13 @@ class OpenCvPipeline(StreamPipeline):
         super().__init__(config)
 
         # OpenCV source element
-        self.source = cv2.VideoCapture(config["source"]["name"])
+        src = config["source"]
+        self.source = cv2.VideoCapture(src["name"])
+        self.min_idx = src["min_idx"] if "min_idx" in src else -1
+        self.max_idx = src["max_idx"] if "max_idx" in src else -1
+        self.step = src["step"] if "step" in src else 1
+        self.restart = src["restart"] if "restart" in src else False
+        self.rotate = src["rotate"] if "rotate" in src else False
 
         # OpenCV sink element
         self.sink_output = None
@@ -101,13 +107,33 @@ class OpenCvPipeline(StreamPipeline):
     def start(self):
         logger.info("Starting %s..." % self.__class__.__name__)
 
+        index = self.min_idx
+
         while True:
+
+            # Get desired frame from the video feed
+            if index > -1:
+                self.source.set(1, index)
+
             # Capture frame
             ret, img = self.source.read()
 
-            if not ret:
-                logger.error("Can't receive frame (stream end?). Exiting ...")
-                break
+            if not ret or img is None:
+                if self.restart:
+                    if self.min_idx > -1:
+                        index = self.min_idx
+                    else:
+                        self.source.set(1, 0)
+                    logger.info("Probably end of video stream. Starting over...")
+                    continue
+                else:
+                    logger.error("Can't receive frame (stream end?). Exiting ...")
+                    break
+
+            # Rotate 90 degrees clock-wise
+            if self.rotate:
+                img = cv2.transpose(img)
+                img = cv2.flip(img, flipCode=1)
 
             # Display
             if self.source_window_name:
@@ -131,6 +157,15 @@ class OpenCvPipeline(StreamPipeline):
 
             if self.source_window_name or self.sink_window_name:
                 cv2.waitKey(1)
+
+            # Increment
+            if index > -1:
+                index += self.step
+                if self.max_idx > -1 and index > self.max_idx:
+                    if self.restart:
+                        index = self.min_idx
+                    else:
+                        break
 
     def stop(self):
         # Closing all open windows

@@ -1,0 +1,19 @@
+{
+    "test_display": {
+        "enabled": true,
+        "pipeline": "cv",
+        "source": {
+            "name": "/video/DayShot-1.MP4",
+            "min_idx": 0,
+            "max_idx": -1,
+            "step": 1,
+            "restart": true,
+            "rotate": false,
+            "display": true
+        },
+        "sink": {
+            "display": false
+        },
+        "debug": true
+    }
+}
