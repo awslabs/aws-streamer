@@ -164,6 +164,7 @@ class OpenCvPipeline(StreamPipeline):
                 if self.max_idx > -1 and index > self.max_idx:
                     if self.restart:
                         index = self.min_idx
+                        logger.info("End of clip. Restarting...")
                     else:
                         break
 

@@ -32,7 +32,7 @@ wget https://www.amazontrust.com/repository/AmazonRootCA1.pem -O /greengrass/cer
 
 The commands below should only be executed on the target platform:
 
--  Follow AWS Streamer installation instructions
+- Follow AWS Streamer [installation instructions](https://github.com/awslabs/aws-streamer/blob/master/INSTALL.md).
 
 - Install needed python packages for all users:
     ```
@@ -41,6 +41,14 @@ The commands below should only be executed on the target platform:
     curl "https://bootstrap.pypa.io/get-pip.py" -o "get-pip.py"
     python3 get-pip.py --user
     pip3 install -r /path/to/this/folder/src/requirements.txt
+
+    # or
+    python3 -m pip install -r /path/to/this/folder/src/requirements.txt
+    ```
+
+    Validate installation:
+    ```
+    sudo -u ggc_user bash -c 'python3 -c "import cv2"'
     ```
 
 - Make sure that video volume exists and is accesible by ggc_user:
@@ -131,7 +139,7 @@ You're good to go. Check how to configure and use lambdas: [GStreamer Pipeline](
 
 To debug the deployment process, check the log:
 ```
-tools/log.sh runtime
+sudo tools/log.sh runtime
 ```
 
 For each particular lambda, check the log this way:

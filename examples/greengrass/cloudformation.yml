@@ -20,7 +20,7 @@ Parameters:
   HardwareType:
     Description: "Edge gateway hardware type: nvidia or generic."
     Type: String
-    Default: nvidia
+    Default: generic
 
 Resources:
 
