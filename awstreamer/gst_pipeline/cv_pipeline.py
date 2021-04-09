@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import time
 import glob
 import logging
 import cv2
@@ -120,11 +121,16 @@ class OpenCvPipeline(StreamPipeline):
 
             if not ret or img is None:
                 if self.restart:
-                    if self.min_idx > -1:
-                        index = self.min_idx
+                    if self.config["source"]["type"] == "live":
+                        logger.info("Restarting camera feed...")
+                        self.source = cv2.VideoCapture(self.config["source"]["name"])
                     else:
-                        self.source.set(1, 0)
-                    logger.info("Probably end of video stream. Starting over...")
+                        if self.min_idx > -1:
+                            index = self.min_idx
+                        else:
+                            self.source.set(1, 0)
+                        logger.info("Probably end of video stream. Starting over...")
+                    time.sleep(1)
                     continue
                 else:
                     logger.error("Can't receive frame (stream end?). Exiting ...")
