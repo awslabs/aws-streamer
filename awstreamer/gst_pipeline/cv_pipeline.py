@@ -112,68 +112,76 @@ class OpenCvPipeline(StreamPipeline):
         index = self.min_idx
 
         while True:
+            try:
+                # Get desired frame from the video feed
+                if index > -1:
+                    self.source.set(1, index)
 
-            # Get desired frame from the video feed
-            if index > -1:
-                self.source.set(1, index)
+                # Capture frame
+                ret, img = self.source.read()
 
-            # Capture frame
-            ret, img = self.source.read()
-
-            if not ret or img is None:
-                if self.restart:
-                    if self.src_type == "live":
-                        logger.info("Restarting camera feed...")
-                        self.source = cv2.VideoCapture(self.config["source"]["name"])
-                    else:
-                        if self.min_idx > -1:
-                            index = self.min_idx
-                        else:
-                            self.source.set(1, 0)
-                        logger.info("Probably end of video stream. Starting over...")
-                    time.sleep(1)
-                    continue
-                else:
-                    logger.error("Can't receive frame (stream end?). Exiting ...")
-                    break
-
-            # Rotate 90 degrees clock-wise
-            if self.rotate:
-                img = cv2.transpose(img)
-                img = cv2.flip(img, flipCode=1)
-
-            # Display
-            if self.source_window_name:
-                cv2.imshow(self.source_window_name, img)
-
-            # Process
-            img = self.process(img)
-
-            # Dump to sink output
-            if self.sink_output is not None:
-                self.sink_output.write(img)
-
-            # Dump to sink pipeline
-            if self.sink_pipeline is not None:
-                img = cv2.resize(img, (self.sink_width, self.sink_height))
-                self.sink_pipeline.push(img)
-
-            # Display
-            if self.sink_window_name:
-                cv2.imshow(self.sink_window_name, img)
-
-            if self.source_window_name or self.sink_window_name:
-                cv2.waitKey(1)
-
-            # Increment
-            if index > -1:
-                index += self.step
-                if self.max_idx > -1 and index > self.max_idx:
+                if not ret or img is None:
                     if self.restart:
-                        index = self.min_idx
-                        logger.info("End of clip. Restarting...")
+                        if self.src_type == "live":
+                            logger.info("Restarting camera feed...")
+                            self.source = cv2.VideoCapture(self.config["source"]["name"])
+                        else:
+                            if self.min_idx > -1:
+                                index = self.min_idx
+                            else:
+                                self.source.set(1, 0)
+                            logger.info("Probably end of video stream. Starting over...")
+                        time.sleep(1)
+                        continue
                     else:
+                        logger.error("Can't receive frame (stream end?). Exiting ...")
                         break
+
+                # Rotate 90 degrees clock-wise
+                if self.rotate:
+                    img = cv2.transpose(img)
+                    img = cv2.flip(img, flipCode=1)
+
+                # Display
+                if self.source_window_name:
+                    cv2.imshow(self.source_window_name, img)
+
+                # Process
+                img = self.process(img)
+
+                # Dump to sink output
+                if self.sink_output is not None:
+                    self.sink_output.write(img)
+
+                # Dump to sink pipeline
+                if self.sink_pipeline is not None:
+                    img = cv2.resize(img, (self.sink_width, self.sink_height))
+                    self.sink_pipeline.push(img)
+
+                # Display
+                if self.sink_window_name:
+                    cv2.imshow(self.sink_window_name, img)
+
+                if self.source_window_name or self.sink_window_name:
+                    cv2.waitKey(1)
+
+                # Increment
+                if index > -1:
+                    index += self.step
+                    if self.max_idx > -1 and index > self.max_idx:
+                        if self.restart:
+                            index = self.min_idx
+                            logger.info("End of clip. Restarting...")
+                        else:
+                            break
+
+            except Exception as e:
+                logger.error("Exception caught in CvPipeline: " + repr(e))
+                if self.restart:
+                    logger.info("Restarting video source...")
+                    index = self.min_idx
+                    self.source = cv2.VideoCapture(self.config["source"]["name"])
+                    time.sleep(1)
 
     def stop(self):
         # Closing all open windows
