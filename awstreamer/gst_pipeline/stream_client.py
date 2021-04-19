@@ -6,6 +6,7 @@
 
 import os
 import sys
+import time
 import argparse
 import logging
 from pprint import pformat
@@ -45,6 +46,7 @@ def stream_pipeline(id, params):
 
     except Exception as e:
         logger.error("Failed to run StreamPipeline: " + repr(e))
+        raise e
 
 class StreamClient():
     '''
@@ -202,7 +204,7 @@ class StreamClient():
     def stop(self):
         self.pool.stop()
 
-    def schedule(self, config_or_filename=None, wait_for_finish=False):
+    def schedule(self, config_or_filename=None, wait_for_finish=False, restart_on_exception=False):
         '''
         Start one or more pipelines asynchronously, in parallel
         '''
@@ -242,6 +244,8 @@ class StreamClient():
 
                 # Start new process/thread
                 future = self.pool.schedule(stream_pipeline, args=[key, config[key]])
+                if restart_on_exception:
+                    future.add_done_callback(self.catch_and_restart)
                 self.futures[key] = future
 
             # This is a blocking call, therefore use with caution (it will prevent parallel execution!)
@@ -255,6 +259,28 @@ class StreamClient():
 
         return self.config
 
+    def catch_and_restart(self, future):
+        '''
+        Catches any exception from the future and restarts the process/thread
+        '''
+        try:
+            result = future.result()
+            logger.info(result)
+        except TimeoutError as error:
+            logger.error("Function took longer than %d seconds" % error.args[1])
+        except Exception as error:
+            logger.error("Function raised %s" % error)
+
+            if "CancelledError" in error.__class__.__name__:
+                logger.error("Function has been already cancelled. Doing nothing...")
+                return
+
+            if hasattr(error, 'traceback'):
+                logger.error(error.traceback)
+
+            logger.info("Restarting all pipelines after 5 sec...")
+            time.sleep(5)
+            self.schedule(self.config, wait_for_finish=False, restart_on_exception=True)
 
 if __name__ == "__main__":
     # Parse args
