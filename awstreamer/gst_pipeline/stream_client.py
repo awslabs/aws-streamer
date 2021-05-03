@@ -81,6 +81,10 @@ class StreamClient():
             diff_path = os.path.normpath(diff_path)
             plugin_path = os.path.join(diff_path, plugin_path)[1:]
 
+        # Add path to KVS
+        kvs_plugin_path = os.path.join(plugin_path, 'kvs')
+        plugin_path += ":" + kvs_plugin_path
+
         # Python bindings path
         plugin_path += ":/usr/lib/gstreamer-1.0/"
 
