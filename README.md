@@ -52,7 +52,8 @@ List of features provided by this library:
 
     To set extra CMake flags (see below table):
     ``` bash
-    pip install -v . --install-option "build_ext" --install-option "--cmake-args=-DBUILD_KVS=ON"
+    python3 setup.py install
+    python3 setup.py build_ext --cmake-args=-DBUILD_KVS=ON
     ```
 
 - In place:
