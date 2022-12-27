@@ -2,6 +2,6 @@ click==6.7
 flask>=0.12.3
 itsdangerous==0.24
 Jinja2==2.11.3
-setuptools==45
+setuptools==65.5.1
 MarkupSafe==1.0
 Werkzeug==0.15.3
