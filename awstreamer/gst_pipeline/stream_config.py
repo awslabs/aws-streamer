@@ -49,10 +49,10 @@ class StreamConfig(dict):
         '''
         Recursively update a dict. Subdicts won't be overwritten but also updated.
         '''
-        if not isinstance(original, collections.Mapping):
+        if not isinstance(original, collections.abc.Mapping):
             return update
         for key, value in update.items():
-            if isinstance(value, collections.Mapping):
+            if isinstance(value, collections.abc.Mapping):
                 original[key] = StreamConfig.DeepUpdate(original.get(key), value)
             else:
                 original[key] = value
