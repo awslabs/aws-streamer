@@ -302,7 +302,7 @@ Resources:
       Handler: index.handler
       Role:
         Fn::GetAtt: [VideoStreamingLambdaExecutionRole, Arn]
-      Runtime: nodejs12.x
+      Runtime: nodejs16.x
       Timeout: 300
       MemorySize: 3008
       Environment:
@@ -466,10 +466,9 @@ Resources:
       Cluster: !Ref VideoStreamingCluster
       TaskDefinition: !Ref VideoStreamingTaskDefinition
       DeploymentConfiguration:
-        MinimumHealthyPercent: 100
-        MaximumPercent: 200
-      DesiredCount: 2
-      HealthCheckGracePeriodSeconds: 30
+        MinimumHealthyPercent: 0
+        MaximumPercent: 100
+      DesiredCount: 0
       LaunchType: FARGATE
       NetworkConfiguration:
         AwsvpcConfiguration:
@@ -479,10 +478,6 @@ Resources:
             - !Ref VideoStreamingSubnet2
           SecurityGroups:
             - !Ref VideoStreamingContainerSecurityGroup
-      LoadBalancers:
-        - ContainerName: !Join ['-', [!Ref ServiceName, 'container']]
-          ContainerPort: !Ref ContainerPort
-          TargetGroupArn: !Ref VideoStreamingTargetGroup
 
   VideoStreamingTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -526,6 +521,9 @@ Resources:
 
   VideoStreamingLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn:
+      - VideoStreamingVPC
+      - VideoStreamingDefaultRoute
     Properties:
       LoadBalancerAttributes:
         - Key: idle_timeout.timeout_seconds
