@@ -3,7 +3,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-set -xeo pipefail
+
+export GST_PLUGIN_PATH=/aws-streamer/amazon-kinesis-video-streams-producer-sdk-cpp/build
+export LD_LIBRARY_PATH=/aws-streamer/amazon-kinesis-video-streams-producer-sdk-cp/open-source/local/lib
 
 X_SERVER_NUM=1
 
