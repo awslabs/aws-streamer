@@ -1,7 +1,7 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 USER root
 
@@ -9,10 +9,16 @@ ENV DEBIAN_FRONTEND noninteractive
 
 RUN /usr/bin/apt-get update && \
 	/usr/bin/apt-get install -y curl && \
-	curl -sL https://deb.nodesource.com/setup_10.x | bash - && \
+	curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
 	/usr/bin/apt-get update && \
 	/usr/bin/apt-get upgrade -y && \
 	/usr/bin/apt-get install -y nodejs pulseaudio xvfb xdotool unzip
+
+RUN apt-get update
+RUN apt-get -y install software-properties-common
+RUN add-apt-repository ppa:deadsnakes/ppa
+
+
 
 RUN apt-get update && apt-get -y --no-install-recommends install \
     sudo \
@@ -21,18 +27,16 @@ RUN apt-get update && apt-get -y --no-install-recommends install \
     zip \
     build-essential \
     pkg-config \
-    python3.7 \
+    python3.9 \
     python3-pip \
-    python3.7-dev \
-    python3.7-venv \
     python3-dev \
     python3-numpy \
     python3-matplotlib \
     x11-apps
 
-RUN apt-get -y --no-install-recommends install \
-    git \
+RUN apt-get update && apt-get -y install \
     cmake \
+    git \
     autoconf \
     automake \
     libtool \
@@ -62,7 +66,10 @@ RUN apt-get -y --no-install-recommends install \
     gstreamer1.0-gtk3 \
     gstreamer1.0-qt5 \
     gstreamer1.0-pulseaudio \
-    python-gst-1.0 \
+    libcurl4-openssl-dev \
+    gstreamer1.0-plugins-base-apps \
+    pkg-config \
+    m4 \
     libgirepository1.0-dev \
     libgstreamer-plugins-base1.0-dev \
     libcairo2-dev \
@@ -77,11 +84,18 @@ RUN pip3 install wheel pip setuptools
 
 COPY . /aws-streamer
 
-RUN pip3 install -r /aws-streamer/requirements.txt
+WORKDIR /aws-streamer
 
-RUN ["/bin/bash", "/aws-streamer/build.sh", "-DBUILD_KVS=ON"]
+RUN git clone https://github.com/awslabs/amazon-kinesis-video-streams-producer-sdk-cpp.git
+RUN mkdir -p amazon-kinesis-video-streams-producer-sdk-cpp/build
+WORKDIR /aws-streamer/amazon-kinesis-video-streams-producer-sdk-cpp/build
+RUN cmake .. -DBUILD_GSTREAMER_PLUGIN=ON
 
-RUN ["/bin/ls", "-la", "/aws-streamer/examples/test_app/awstreamer/gst_plugins/kvs"]
+RUN make
+
+WORKDIR /aws-streamer
+
+RUN python3 setup.py install
 
 WORKDIR /aws-streamer
 RUN chmod +x /aws-streamer/examples/serverless/run.sh
